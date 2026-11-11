@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest>=8
+pytest-qt>=4
+yappi>=1.6          # scripts/profile_cpu.py
+pyinstaller>=6.10        # scripts/build_app.sh

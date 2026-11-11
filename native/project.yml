@@ -1,0 +1,50 @@
+# XcodeGen spec for the signed host app + CoreMediaIO camera system extension.
+# Generated project: build/xcode/AIVirtualCameraStudio.xcodeproj (see scripts/build_camera.sh).
+name: AIVirtualCameraStudio
+options:
+  deploymentTarget:
+    macOS: "13.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: ${VCS_TEAM_ID}
+    CODE_SIGN_STYLE: Automatic
+    MARKETING_VERSION: "0.9.0"
+    CURRENT_PROJECT_VERSION: "9"
+    ENABLE_HARDENED_RUNTIME: YES
+    SWIFT_VERSION: "5.0"
+    ARCHS: arm64
+    VCS_PROJECT_ROOT: ${VCS_PROJECT_ROOT}
+targets:
+  AIVirtualCameraStudio:
+    type: application
+    platform: macOS
+    sources:
+      - path: HostApp/main.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aivcstudio.app
+        PRODUCT_NAME: "AI Virtual Camera Studio"
+        EXECUTABLE_NAME: AIVirtualCameraStudio
+        PRODUCT_MODULE_NAME: AIVirtualCameraStudio
+        INFOPLIST_FILE: HostApp/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: HostApp/Entitlements.plist
+    dependencies:
+      - target: AIVirtualCameraExtension
+        embed: true
+  AIVirtualCameraExtension:
+    type: system-extension
+    platform: macOS
+    sources:
+      - path: CameraExtension
+        excludes: ["*.plist"]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aivcstudio.app.camera
+        PRODUCT_NAME: com.aivcstudio.app.camera
+        INFOPLIST_FILE: CameraExtension/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: CameraExtension/Entitlements.plist
+        ENABLE_APP_SANDBOX: YES
+        SKIP_INSTALL: YES
