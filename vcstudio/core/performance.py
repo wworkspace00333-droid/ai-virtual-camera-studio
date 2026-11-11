@@ -27,12 +27,37 @@ class _RusageInfoV2(__import__("ctypes").Structure):
 
 _libproc = None
 
+# Memory thresholds for the app's own footprint. "auto" scales them with installed RAM so the same
+# build behaves sensibly from an 8 GB MacBook Air to a 128 GB Mac Studio: warning at 3/16 of RAM
+# (3072 MB on the 16 GB reference machine), clamped to [1 GB, 8 GB]; critical (load shedding) at 2x.
+AUTO_WARN_FRACTION = 3 / 16
+AUTO_WARN_MIN_MB = 1024
+AUTO_WARN_MAX_MB = 8192
+
+
+def total_memory_mb() -> int:
+    return int(psutil.virtual_memory().total // 2**20)
+
+
+def auto_memory_warning_mb(total_mb: int | None = None) -> int:
+    total = total_memory_mb() if total_mb is None else total_mb
+    return int(min(AUTO_WARN_MAX_MB, max(AUTO_WARN_MIN_MB, round(total * AUTO_WARN_FRACTION))))
+
+
+def memory_thresholds_mb(settings, total_mb: int | None = None) -> tuple[int, int]:
+    """(warning, critical) in MB from settings: performance.memory_limits = auto | manual."""
+    if settings.get("performance.memory_limits") == "manual":
+        warn = int(settings.get("performance.memory_warning_mb"))
+    else:
+        warn = auto_memory_warning_mb(total_mb)
+    return warn, 2 * warn
+
 
 def phys_footprint(pid: int | None = None) -> int | None:
     """Physical footprint in bytes (what Activity Monitor's "Memory" column shows), or None.
 
     RSS over-counts on macOS (shared framework pages, mapped IOSurfaces); the footprint is the
-    process's own dirty + compressed memory, which is what actually pressures a 16 GB machine.
+    process's own dirty + compressed memory, which is what actually pressures unified memory.
     """
     global _libproc
     import ctypes
@@ -77,15 +102,18 @@ class ResourceSample:
 class SystemMonitor:
     """Call sample() periodically (e.g. from a QTimer). Cheap: ~1 ms + ioreg every gpu_every calls."""
 
-    def __init__(self, memory_warning_mb: int = 3072, gpu_every: int = 2):
+    def __init__(self, memory_warning_mb: int | None = None, gpu_every: int = 2):
         self._proc = psutil.Process(os.getpid())
         self._proc.cpu_percent(None)
         psutil.cpu_percent(None)
-        self.memory_warning_bytes = memory_warning_mb * 1024 * 1024
+        self.set_warning_mb(memory_warning_mb if memory_warning_mb is not None else auto_memory_warning_mb())
         self._gpu_every = max(1, gpu_every)
         self._n = 0
         self._gpu: tuple[float | None, int | None] = (None, None)
         self.last: ResourceSample | None = None
+
+    def set_warning_mb(self, mb: int) -> None:
+        self.memory_warning_bytes = int(mb) * 1024 * 1024
 
     def sample(self) -> ResourceSample:
         if self._n % self._gpu_every == 0:

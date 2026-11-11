@@ -38,7 +38,8 @@ class AppContext:
             log.warning("Active profile %r missing; using %r", wanted, self.profiles.names()[0])
             self.profiles.switch(self.profiles.names()[0])
         self.profiles.add_listener(self._on_profile_event)
-        self.monitor = SystemMonitor(self.settings.get("performance.memory_warning_mb"))
+        from vcstudio.core.performance import memory_thresholds_mb
+        self.monitor = SystemMonitor(memory_thresholds_mb(self.settings)[0])
         self.capture = CaptureSupervisor(event_sink=self.db.log_event)
         from vcstudio.ai.engine import AIEngine
         from vcstudio.ai.model_manager import ModelManager
@@ -80,6 +81,13 @@ class AppContext:
                           TrackerConfig.from_profile(body))
 
     def _on_setting(self, key: str, _value) -> None:
+        if key.startswith("performance.memory"):
+            from vcstudio.core.performance import memory_thresholds_mb
+            warn, crit = memory_thresholds_mb(self.settings)
+            self.monitor.set_warning_mb(warn)
+            self.watchdog.set_thresholds(warn, crit)
+            log.info("Memory thresholds: warning %d MB, critical %d MB", warn, crit)
+            return
         if key.startswith("performance"):
             self.apply_ai_config()
         if key.startswith("output"):

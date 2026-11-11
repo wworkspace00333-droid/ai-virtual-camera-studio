@@ -231,6 +231,19 @@ def test_watchdog_memory_load_shedding(ctx):
     assert any("critical memory" in m for m in events)
 
 
+def test_memory_threshold_settings_apply_live(ctx):
+    from vcstudio.core.performance import auto_memory_warning_mb
+    auto = auto_memory_warning_mb()
+    assert (ctx.watchdog.warn_mb, ctx.watchdog.critical_mb) == (auto, 2 * auto)
+    ctx.settings.set("performance.memory_warning_mb", 1000)
+    assert ctx.watchdog.warn_mb == auto                       # ignored while automatic
+    ctx.settings.set("performance.memory_limits", "manual")
+    assert (ctx.watchdog.warn_mb, ctx.watchdog.critical_mb) == (1000, 2000)
+    assert ctx.monitor.memory_warning_bytes == 1000 * 2**20
+    ctx.settings.set("performance.memory_limits", "auto")
+    assert ctx.watchdog.warn_mb == auto
+
+
 def test_hotkey_parsing_and_native_registration():
     from vcstudio.native import metal
     from vcstudio.native.hotkeys import CMD, CTRL, OPT, SHIFT, GlobalHotkeys, parse

@@ -4,8 +4,9 @@ Checks (every `interval` seconds):
   pipeline   heartbeat older than PIPELINE_STALL_S while running        -> restart pipeline thread
   ai         enabled, frames flowing, no inference for AI_STALL_S        -> restart AI engine
              (output continues meanwhile: tracks coast, then regions disappear; nothing blocks)
-  memory     process RSS above warning -> event; above critical -> shed load: Low Resource mode,
-             close video players, drop caches; restored automatically when pressure falls
+  memory     process footprint above warning -> event; above critical -> shed load: Low Resource mode,
+             close video players, drop caches; restored automatically when pressure falls.
+             Thresholds scale with installed RAM unless set manually (performance.memory_thresholds_mb).
 Capture loss/frozen frames and camera reconnects are handled by CaptureSupervisor and
 CameraOutputController; the watchdog records their state changes.
 """
@@ -41,9 +42,10 @@ class Watchdog:
     def __init__(self, ctx, interval: float = 0.5, warn_mb: float | None = None, critical_mb: float | None = None):
         self.ctx = ctx
         self.interval = interval
-        base = ctx.settings.get("performance.memory_warning_mb")
-        self.warn_mb = warn_mb if warn_mb is not None else base
-        self.critical_mb = critical_mb if critical_mb is not None else base * 2
+        from vcstudio.core.performance import memory_thresholds_mb
+        warn, crit = memory_thresholds_mb(ctx.settings)
+        self.warn_mb = warn_mb if warn_mb is not None else warn
+        self.critical_mb = critical_mb if critical_mb is not None else crit
         self.stats = WatchdogStats()
         self._stop = threading.Event()
         self._t: threading.Thread | None = None
@@ -52,6 +54,9 @@ class Watchdog:
         from vcstudio.core.performance import phys_footprint
         # physical footprint (Activity Monitor "Memory"); RSS misses IOSurface/GPU allocations
         self.rss_fn = lambda: (phys_footprint() or self._proc.memory_info().rss) / 2**20   # injectable for tests
+
+    def set_thresholds(self, warn_mb: float, critical_mb: float) -> None:
+        self.warn_mb, self.critical_mb = warn_mb, critical_mb
 
     def start(self) -> None:
         if self._t and self._t.is_alive():

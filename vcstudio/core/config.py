@@ -81,7 +81,8 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     },
     "performance": {
         "mode": "balanced",
-        "memory_warning_mb": 3072,
+        "memory_limits": "auto",     # auto: thresholds scale with installed RAM | manual: use memory_warning_mb
+        "memory_warning_mb": 3072,   # manual mode only; critical (load shedding) is 2x
         "monitor_interval_ms": 1000,
     },
     "ui": {
@@ -100,6 +101,7 @@ _ALLOWED = {
     ("input", "method"): {"avfoundation", "test_pattern", "obs_ipc"},
     ("output", "pixel_format"): {"BGRA", "NV12"},
     ("performance", "mode"): set(PERFORMANCE_MODES),
+    ("performance", "memory_limits"): {"auto", "manual"},
     ("logging", "level"): {"DEBUG", "INFO", "WARNING", "ERROR"},
     ("processing", "compositor"): {"auto", "metal", "cpu"},
 }
@@ -111,6 +113,7 @@ _RANGES = {
     ("input", "frozen_frame_timeout_ms"): (100, 60000),
     ("input", "missing_input_timeout_ms"): (100, 60000),
     ("ui", "preview_max_fps"): (1, 60),
+    ("performance", "memory_warning_mb"): (256, 262144),
 }
 
 

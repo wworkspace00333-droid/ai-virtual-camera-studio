@@ -40,7 +40,7 @@ The log files are in `~/Library/Application Support/AIVirtualCameraStudio/logs/`
 | Symptom | Cause / fix |
 |---|---|
 | Output below 60 fps | Check Performance > Pipeline timings. Choose *Low Resource* or *Balanced*, close other GPU-heavy apps, and lower the video *Decode size*. |
-| Memory warning in Logs / dashboard | The footprint is above 3 GB. At 6 GB the watchdog sheds load automatically (Low Resource mode, closes video players, clears caches) and restores itself afterwards. |
+| Memory warning in Logs / dashboard | The app's footprint is above the warning threshold. By default it scales with installed RAM: 3/16 of RAM, kept between 1 and 8 GB (8 GB Mac → 1.5 GB, 16 GB → 3 GB, 32 GB → 6 GB, 48 GB and up → 8 GB). At twice that, the watchdog sheds load automatically (Low Resource mode, closes video players, clears caches) and restores itself afterwards. To set your own value: Settings > Memory warning > Manual. |
 | Hotkey doesn't work | Another app owns that shortcut: Settings > Hotkeys lists the conflict, and that action falls back to an in-app shortcut. On macOS, "Ctrl" in the hotkey fields means ⌘. |
 
 ## Profiles

@@ -19,6 +19,13 @@ Status values: ✅ done and tested · 🟡 in progress · ⬜ not started · ⛔
 | 12 | Integration/stress | E2E (OBS → camera → QuickTime/FaceTime), 2 h+ soak test with memory tracking | ✅ see [STABILITY.md](STABILITY.md); the E2E through AI Virtual Camera itself is redone after Stage 9 |
 | 13 | Packaging | PyInstaller app, embedded extension, signing, notarization, DMG | 🟡 13a ✅ self-contained app + DMG (ad-hoc signed, self-check 12/12 from the DMG, see [PACKAGING.md](PACKAGING.md)); 13b (embedded extension, Developer ID, notarization) ⛔ needs Xcode + Developer ID |
 
+## Portability update (2026-11-12, MacBook Pro M2 Pro, 16 GB, macOS 27.2.1, Xcode 27.0)
+
+- **Moved to a second Mac:** fresh `.venv` (Python 3.12.16), native libraries and dev app rebuilt; the full suite passes here (live tests skipped as usual).
+- **Camera extension now builds:** with Xcode 27 the `native/project.yml` project builds unsigned (`BUILD SUCCEEDED`), and the arm64 extension is embedded in the host app. Installing it still needs a Developer team signature (Stage 9 stays 🟡).
+- **Memory thresholds follow installed RAM:** new setting `performance.memory_limits` = `auto` (default) | `manual`. Auto warns at 3/16 of RAM, clamped to 1–8 GB (3072 MB on 16 GB, as before), and sheds load at twice that. Old settings files switch to auto because they lack the new key. Changes apply live to the watchdog and the resource monitor.
+- **Not yet measured on this Mac:** benchmark and soak numbers are still M5-only.
+
 ## Stage 11: optimisation summary
 
 The full report is in [BENCHMARK.md](BENCHMARK.md).

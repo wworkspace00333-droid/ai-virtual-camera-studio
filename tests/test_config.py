@@ -69,3 +69,30 @@ def test_deep_merge_does_not_mutate():
     b = {"x": {"z": 2}}
     m = deep_merge(a, b)
     assert m == {"x": {"y": 1, "z": 2}} and a == {"x": {"y": 1}}
+
+
+def test_memory_thresholds_scale_with_installed_ram(paths):
+    from vcstudio.core.performance import auto_memory_warning_mb, memory_thresholds_mb
+    assert auto_memory_warning_mb(16 * 1024) == 3072          # reference machine keeps the old value
+    assert auto_memory_warning_mb(8 * 1024) == 1536
+    assert auto_memory_warning_mb(24 * 1024) == 4608
+    assert auto_memory_warning_mb(4 * 1024) == 1024           # floor
+    assert auto_memory_warning_mb(128 * 1024) == 8192         # ceiling
+    s = Settings(paths); s.load()
+    assert s.get("performance.memory_limits") == "auto"
+    assert memory_thresholds_mb(s, total_mb=8 * 1024) == (1536, 3072)
+    s.set("performance.memory_limits", "manual")
+    s.set("performance.memory_warning_mb", 2000)
+    assert memory_thresholds_mb(s, total_mb=8 * 1024) == (2000, 4000)
+    with pytest.raises(SettingsError):
+        s.set("performance.memory_limits", "huge")
+    with pytest.raises(SettingsError):
+        s.set("performance.memory_warning_mb", 10)
+
+
+def test_old_settings_file_with_fixed_threshold_switches_to_auto(paths):
+    # files written before memory_limits existed stored 3072 explicitly; they must follow RAM now
+    paths.settings_file.write_text(json.dumps({"performance": {"mode": "balanced", "memory_warning_mb": 3072}}))
+    s = Settings(paths)
+    assert s.load() == []
+    assert s.get("performance.memory_limits") == "auto"
