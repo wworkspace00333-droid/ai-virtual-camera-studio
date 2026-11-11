@@ -4,7 +4,7 @@ from PySide6.QtCore import QTimer
 from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton
 
-from vcstudio.ui.video_view import STATE_OVERLAY, VideoView, frame_to_qimage
+from vcstudio.ui.video_view import BLACK_INPUT_HINT, STATE_OVERLAY, VideoView, frame_is_black, frame_to_qimage
 from vcstudio.ui.widgets import page_scaffold
 from vcstudio.i18n import tr
 
@@ -28,10 +28,11 @@ class PreviewPage:
         for b in (self.start_btn, self.stop_btn, self.pause_btn, self.pass_btn, self.repl_btn, self.boxes):
             bar.addWidget(b)
         bar.addStretch()
-        self.info = QLabel(); self.info.setObjectName("muted")
-        bar.addWidget(self.info)
         bar.addWidget(src_btn)
         lay.addLayout(bar)
+        # own line: a long source description in the button bar would widen the page past the window
+        self.info = QLabel(); self.info.setObjectName("muted"); self.info.setWordWrap(True)
+        lay.addWidget(self.info)
         views = QHBoxLayout()
         self.original = VideoView("ORIGINAL")
         self.processed = VideoView("PROCESSED  →  AI Virtual Camera")
@@ -63,6 +64,16 @@ class PreviewPage:
                 b.blockSignals(True); b.setChecked(v); b.blockSignals(False)
         self.repl_btn.setText(tr("Replacement on") if p.replacement_enabled else tr("Replacement off"))
 
+    def _black_input(self) -> bool:
+        """Checked at most twice a second while the input is frozen."""
+        import time
+        now = time.monotonic()
+        if now - getattr(self, "_black_t", 0) > 0.5:
+            self._black_t = now
+            f, _ = self.ctx.capture.slot.peek()
+            self._black = f is not None and frame_is_black(f)
+        return self._black
+
     def tick(self):
         cs = self.ctx.capture.stats()
         live = cs.state not in ("stopped", "error")
@@ -71,6 +82,8 @@ class PreviewPage:
             b.setEnabled(live)
         self._sync_buttons()
         text, level = STATE_OVERLAY.get(cs.state, (cs.state, "idle"))
+        if cs.state == "frozen" and self._black_input():
+            text, level = BLACK_INPUT_HINT, "warn"
         self.original.set_overlay(text, level)
         if not live:
             for v in (self.original, self.processed):

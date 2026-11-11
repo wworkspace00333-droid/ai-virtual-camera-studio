@@ -81,13 +81,15 @@ class VideoView(QWidget):
             color = {"warn": theme.WARN, "error": theme.ERR, "ok": theme.OK}.get(self.overlay_level, theme.MUTED)
             f = QFont(p.font()); f.setPointSize(14); f.setBold(True); p.setFont(f)
             fm = p.fontMetrics()
-            w = fm.horizontalAdvance(self.overlay) + 28
-            box = QRectF((self.width() - w) / 2, self.height() - 52, w, 34)
+            w = min(fm.horizontalAdvance(self.overlay) + 28, max(120, self.width() - 40))
+            # long hints wrap onto several lines inside the view
+            h = fm.boundingRect(0, 0, int(w) - 28, 1000, int(Qt.AlignCenter | Qt.TextWordWrap), self.overlay).height() + 16
+            box = QRectF((self.width() - w) / 2, self.height() - h - 18, w, max(34, h))
             if self.image is None:
                 box.moveCenter(self.rect().center())
             p.fillRect(box, QColor(0, 0, 0, 170))
             p.setPen(QColor(color))
-            p.drawText(box, Qt.AlignCenter, self.overlay)
+            p.drawText(box.adjusted(14, 0, -14, 0), int(Qt.AlignCenter | Qt.TextWordWrap), self.overlay)
         self.paint_foreground(p, target)
 
     def paint_foreground(self, p: QPainter, target: QRectF) -> None:
@@ -123,6 +125,19 @@ def _draw_boxes(self, p: QPainter, target: QRectF) -> None:
 
 
 VideoView._draw_boxes = _draw_boxes
+
+
+BLACK_INPUT_HINT = ("The input is a completely black frame. If it comes from OBS, its scene is empty: add a source "
+                    "in OBS (Sources > + > Video Capture Device, Display Capture or Media Source).")
+
+
+def frame_is_black(frame) -> bool:
+    """True if a sparse sample of the frame is pure black (e.g. an empty OBS scene)."""
+    try:
+        with frame.bgra() as img:
+            return int(img[::32, ::32, :3].max()) == 0
+    except Exception:
+        return False
 
 
 STATE_OVERLAY = {

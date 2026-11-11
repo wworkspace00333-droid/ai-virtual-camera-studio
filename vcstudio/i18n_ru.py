@@ -72,6 +72,8 @@ RU: dict[str, str] = {
     "Frozen input: identical frames": "Вход застыл: кадры одинаковые",
     "Reconnecting…": "Переподключение…",
     "Capture error (see Input page)": "Ошибка захвата (см. страницу «Вход»)",
+    "The input is a completely black frame. If it comes from OBS, its scene is empty: add a source in OBS (Sources > + > Video Capture Device, Display Capture or Media Source).":
+        "На входе полностью чёрный кадр. Если он из OBS, значит сцена пустая: добавьте источник в OBS (Sources > + > Video Capture Device, Display Capture или Media Source).",
     "ORIGINAL": "ОРИГИНАЛ",
     "PROCESSED  →  AI Virtual Camera": "ОБРАБОТАННОЕ  →  камера",
     "REPLACEMENT PREVIEW": "ПРЕВЬЮ ЗАМЕНЫ",
