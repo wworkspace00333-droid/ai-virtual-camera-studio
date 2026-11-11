@@ -7,6 +7,8 @@ APP="$ROOT/build/AI Virtual Camera Studio Dev.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
 SDK="${VCS_SDK:-$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX26.*.sdk 2>/dev/null | tail -1)}"
+# fall back to whatever SDK the selected toolchain provides (other Macs may not have the 26.x SDK)
+[[ -n "$SDK" ]] || SDK="$(xcrun --sdk macosx --show-sdk-path)"
 swiftc -sdk "$SDK" -O -target arm64-apple-macos13.0 -o "$APP/Contents/MacOS/vcstudio-dev" "$ROOT/native/DevLauncher/main.swift"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

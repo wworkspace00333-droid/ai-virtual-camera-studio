@@ -68,6 +68,9 @@ def main(argv: list[str] | None = None) -> int:
     app.setOrganizationName("AIVCStudio")
     app.setStyleSheet(QSS)
     ctx = AppContext()
+    from vcstudio import i18n
+    lang = argv[argv.index("--lang") + 1] if "--lang" in argv else ctx.settings.get("ui.language")
+    i18n.set_language(i18n.resolve(lang))
 
     def excepthook(t, v, tb):
         logging.getLogger("vcstudio.crash").critical("Unhandled exception", exc_info=(t, v, tb))
@@ -91,7 +94,8 @@ def main(argv: list[str] | None = None) -> int:
         out = Path(argv[argv.index("--snapshot") + 1]); out.mkdir(parents=True, exist_ok=True)
 
         def snap():
-            for key in ("preview", "ai", "detection", "dashboard"):
+            keys = win.page_keys() if "--snapshot-all" in argv else ("preview", "ai", "detection", "dashboard")
+            for key in keys:
                 win.goto(key)
                 for _ in range(10):
                     app.processEvents(); win.feeder.tick()

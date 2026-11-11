@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (QComboBox, QFormLayout, QHBoxLayout, QKeySequence
 from vcstudio.core.config import SettingsError
 from vcstudio.ui.actions import ACTION_SPECS, CURRENT_STAGE
 from vcstudio.ui.widgets import Card, page_scaffold
+from vcstudio.i18n import tr
 
 
 class SettingsPage:
@@ -14,21 +15,21 @@ class SettingsPage:
 
     def __init__(self, ctx, actions, window=None):
         self.ctx, self.actions, self.window = ctx, actions, window
-        self.widget, lay = page_scaffold("Settings", f"Stored locally in {ctx.paths.settings_file}")
+        self.widget, lay = page_scaffold("Settings", tr("Stored locally in {path}", path=ctx.paths.settings_file))
         s = ctx.settings
         gen = Card("Input defaults")
         f = QFormLayout()
         self.method = QComboBox()
-        self.method.addItem("OBS Virtual Camera (AVFoundation)", "avfoundation")
-        self.method.addItem("Direct OBS frame transfer (vcstudio-obs plugin)", "obs_ipc")
+        self.method.addItem(tr("OBS Virtual Camera (AVFoundation)"), "avfoundation")
+        self.method.addItem(tr("Direct OBS frame transfer (vcstudio-obs plugin)"), "obs_ipc")
         self.method.setCurrentIndex(self.method.findData(s.get("input.method")))
-        self.reconnect = QCheckBox("Reconnect automatically")
+        self.reconnect = QCheckBox(tr("Reconnect automatically"))
         self.reconnect.setChecked(s.get("input.auto_reconnect"))
-        self.frozen = QSpinBox(); self.frozen.setRange(100, 60000); self.frozen.setSuffix(" ms")
+        self.frozen = QSpinBox(); self.frozen.setRange(100, 60000); self.frozen.setSuffix(tr(" ms"))
         self.frozen.setValue(s.get("input.frozen_frame_timeout_ms"))
-        f.addRow("Input method", self.method)
-        f.addRow("", self.reconnect)
-        f.addRow("Frozen-frame timeout", self.frozen)
+        f.addRow(tr("Input method"), self.method)
+        f.addRow(tr(""), self.reconnect)
+        f.addRow(tr("Frozen-frame timeout"), self.frozen)
         gen.layout_.addLayout(f)
         lay.addWidget(gen)
 
@@ -40,48 +41,55 @@ class SettingsPage:
         self.res.setCurrentIndex(0 if s.get("output.width") == 1920 else 1)
         self.fps = QComboBox()
         for v in (60, 30):
-            self.fps.addItem(f"{v} FPS", v)
+            self.fps.addItem(f"{v}" + tr(" FPS"), v)
         self.fps.setCurrentIndex(self.fps.findData(s.get("output.fps")))
         self.pix = QComboBox(); self.pix.addItems(["BGRA", "NV12"]); self.pix.setCurrentText(s.get("output.pixel_format"))
         self.comp = QComboBox()
-        self.comp.addItem("Automatic (Metal GPU if available)", "auto")
-        self.comp.addItem("Metal GPU", "metal")
-        self.comp.addItem("CPU (NumPy/OpenCV fallback)", "cpu")
+        self.comp.addItem(tr("Automatic (Metal GPU if available)"), "auto")
+        self.comp.addItem(tr("Metal GPU"), "metal")
+        self.comp.addItem(tr("CPU (NumPy/OpenCV fallback)"), "cpu")
         self.comp.setCurrentIndex(max(0, self.comp.findData(s.get("processing.compositor"))))
         self.loglevel = QComboBox(); self.loglevel.addItems(["DEBUG", "INFO", "WARNING", "ERROR"])
         self.loglevel.setCurrentText(s.get("logging.level"))
-        f2.addRow("Resolution", self.res)
-        f2.addRow("Frame rate", self.fps)
-        f2.addRow("Pixel format", self.pix)
-        f2.addRow("Compositor", self.comp)
-        f2.addRow("Log level", self.loglevel)
+        f2.addRow(tr("Resolution"), self.res)
+        f2.addRow(tr("Frame rate"), self.fps)
+        f2.addRow(tr("Pixel format"), self.pix)
+        f2.addRow(tr("Compositor"), self.comp)
+        f2.addRow(tr("Log level"), self.loglevel)
         from vcstudio.core.performance import auto_memory_warning_mb, total_memory_mb
         auto_warn = auto_memory_warning_mb()
         self.mem_mode = QComboBox()
-        self.mem_mode.addItem(f"Automatic: {auto_warn} MB for this Mac's {total_memory_mb() / 1024:.0f} GB", "auto")
-        self.mem_mode.addItem("Manual", "manual")
+        self.mem_mode.addItem(tr("Automatic: {mb} MB for this Mac's {gb} GB", mb=auto_warn, gb=f"{total_memory_mb() / 1024:.0f}"), "auto")
+        self.mem_mode.addItem(tr("Manual"), "manual")
         self.mem_mode.setCurrentIndex(max(0, self.mem_mode.findData(s.get("performance.memory_limits"))))
         self.mem_warn = QSpinBox(); self.mem_warn.setRange(256, 262144); self.mem_warn.setSingleStep(256)
-        self.mem_warn.setSuffix(" MB"); self.mem_warn.setValue(s.get("performance.memory_warning_mb"))
+        self.mem_warn.setSuffix(tr(" MB")); self.mem_warn.setValue(s.get("performance.memory_warning_mb"))
         self.mem_warn.setEnabled(self.mem_mode.currentData() == "manual")
         self.mem_mode.currentIndexChanged.connect(lambda _: self.mem_warn.setEnabled(self.mem_mode.currentData() == "manual"))
-        self.mem_warn.setToolTip("App memory above this logs a warning; above twice this the app sheds load "
-                                 "(Low Resource mode, closes video players, clears caches).")
-        f2.addRow("Memory warning", self.mem_mode)
-        f2.addRow("Manual threshold", self.mem_warn)
+        self.mem_warn.setToolTip(tr("App memory above this logs a warning; above twice this the app sheds load "
+                                 "(Low Resource mode, closes video players, clears caches)."))
+        from vcstudio.i18n import LANGUAGES
+        self.lang = QComboBox()
+        self.lang.addItem(tr("Automatic (macOS language)"), "auto")
+        for code, name in LANGUAGES.items():
+            self.lang.addItem(name, code)
+        self.lang.setCurrentIndex(max(0, self.lang.findData(s.get("ui.language"))))
+        f2.addRow(tr("Language"), self.lang)
+        f2.addRow(tr("Memory warning"), self.mem_mode)
+        f2.addRow(tr("Manual threshold"), self.mem_warn)
         out.layout_.addLayout(f2)
         lay.addWidget(out)
-        save = QPushButton("Save settings"); save.setObjectName("primary")
+        save = QPushButton(tr("Save settings")); save.setObjectName("primary")
         save.clicked.connect(self.save)
         lay.addWidget(save)
 
         hk = Card("Hotkeys")
-        note = QLabel("With “System-wide” on, shortcuts work even when another app is in front (Carbon hotkeys; "
+        note = QLabel(tr("With “System-wide” on, shortcuts work even when another app is in front (Carbon hotkeys; "
                       "no Accessibility permission needed). On macOS, “Ctrl” in these fields is the ⌘ key. A shortcut "
-                      "another app already owns is reported and falls back to an in-app shortcut.")
+                      "another app already owns is reported and falls back to an in-app shortcut."))
         note.setObjectName("muted"); note.setWordWrap(True)
         hk.layout_.addWidget(note)
-        self.global_hk = QCheckBox("System-wide (global) hotkeys")
+        self.global_hk = QCheckBox(tr("System-wide (global) hotkeys"))
         self.global_hk.setChecked(s.get("ui.global_hotkeys"))
         hk.layout_.addWidget(self.global_hk)
         self.hk_status = QLabel(); self.hk_status.setWordWrap(True); self.hk_status.setStyleSheet("color: #d29922;")
@@ -92,13 +100,13 @@ class SettingsPage:
         for spec in ACTION_SPECS:
             e = QKeySequenceEdit(QKeySequence(bindings.get(spec.id, "")))
             e.setMaximumSequenceLength(1) if hasattr(e, "setMaximumSequenceLength") else None
-            label = spec.label
+            label = tr(spec.label)
             f3.addRow(label, e)
             self.editors[spec.id] = e
         hk.layout_.addLayout(f3)
         row = QHBoxLayout()
-        apply_btn = QPushButton("Apply hotkeys"); apply_btn.setObjectName("primary")
-        reset_btn = QPushButton("Reset to defaults")
+        apply_btn = QPushButton(tr("Apply hotkeys")); apply_btn.setObjectName("primary")
+        reset_btn = QPushButton(tr("Reset to defaults"))
         row.addWidget(apply_btn); row.addWidget(reset_btn); row.addStretch()
         hk.layout_.addLayout(row)
         apply_btn.clicked.connect(self.apply_hotkeys)
@@ -120,12 +128,16 @@ class SettingsPage:
             s.set("processing.compositor", self.comp.currentData(), persist=False)
             s.set("performance.memory_warning_mb", self.mem_warn.value(), persist=False)
             s.set("performance.memory_limits", self.mem_mode.currentData(), persist=False)
+            lang_changed = s.get("ui.language") != self.lang.currentData()
+            s.set("ui.language", self.lang.currentData(), persist=False)
             s.save()
+            if lang_changed:
+                QMessageBox.information(self.widget, tr("Language"), tr("The new language is used after you restart the app."))
             import logging
             logging.getLogger().setLevel(self.loglevel.currentText())
             logging.getLogger(__name__).info("Settings saved")
         except SettingsError as e:
-            QMessageBox.warning(self.widget, "Settings", str(e))
+            QMessageBox.warning(self.widget, tr("Settings"), tr(str(e)))
 
     def current_bindings(self) -> dict[str, str]:
         return {aid: e.keySequence().toString(QKeySequence.PortableText) for aid, e in self.editors.items()}
@@ -135,7 +147,7 @@ class SettingsPage:
         seqs = [v for v in b.values() if v]
         dupes = sorted({v for v in seqs if seqs.count(v) > 1})
         if dupes:
-            QMessageBox.warning(self.widget, "Hotkeys", "The same shortcut is assigned twice: " + ", ".join(dupes))
+            QMessageBox.warning(self.widget, tr("Hotkeys"), tr("The same shortcut is assigned twice: ") + ", ".join(dupes))
             return
         self.ctx.settings.set("hotkeys", b)
         self.ctx.settings.set("ui.global_hotkeys", self.global_hk.isChecked())

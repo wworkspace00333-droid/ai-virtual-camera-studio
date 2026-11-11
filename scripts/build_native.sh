@@ -7,6 +7,8 @@ OUT="$(mktemp -d "$ROOT/build/native-tmp.XXXXXX")"   # build aside, then rename 
 trap 'rm -rf "$OUT"' EXIT                             # running processes keep their mapped copy (no crash)
 mkdir -p "$FINAL"
 SDK="${VCS_SDK:-$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX26.*.sdk 2>/dev/null | tail -1)}"
+# fall back to whatever SDK the selected toolchain provides (other Macs may not have the 26.x SDK)
+[[ -n "$SDK" ]] || SDK="$(xcrun --sdk macosx --show-sdk-path)"
 [[ -n "$SDK" ]] || SDK="$(xcrun --show-sdk-path)"
 swiftc -sdk "$SDK" -O -whole-module-optimization -emit-library -module-name VCSNative \
   -target arm64-apple-macos13.0 -o "$OUT/libVCSNative.dylib" \

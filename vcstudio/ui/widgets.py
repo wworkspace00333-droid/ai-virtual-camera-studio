@@ -7,6 +7,8 @@ from PySide6.QtCore import QPointF, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
+from vcstudio.i18n import tr
+
 from . import theme
 
 
@@ -24,11 +26,11 @@ def page_scaffold(title: str, subtitle: str = "") -> tuple[QWidget, QVBoxLayout]
     lay = QVBoxLayout(body)
     lay.setContentsMargins(28, 24, 28, 24)
     lay.setSpacing(16)
-    h = QLabel(title)
+    h = QLabel(tr(title))
     h.setObjectName("h1")
     lay.addWidget(h)
     if subtitle:
-        s = QLabel(subtitle)
+        s = QLabel(tr(subtitle))
         s.setObjectName("muted")
         s.setWordWrap(True)
         lay.addWidget(s)
@@ -45,7 +47,7 @@ class Card(QFrame):
         self.layout_.setContentsMargins(16, 14, 16, 14)
         self.layout_.setSpacing(8)
         if title:
-            t = QLabel(title)
+            t = QLabel(tr(title))
             t.setObjectName("h2")
             self.layout_.addWidget(t)
 
@@ -61,7 +63,7 @@ class StatCard(QFrame):
         lay.setContentsMargins(16, 12, 16, 12)
         top = QHBoxLayout()
         self._dot = QLabel("●")
-        self._label = QLabel(label)
+        self._label = QLabel(tr(label))
         self._label.setObjectName("muted")
         top.addWidget(self._label)
         top.addStretch()
@@ -77,8 +79,9 @@ class StatCard(QFrame):
         self.set_state("idle")
 
     def set(self, value: str, detail: str = "", state: str | None = None) -> None:
-        self.value.setText(value)
-        self.detail.setText(detail)
+        # exact-match strings ("Running", "Not installed", ...) are translated here once for every card
+        self.value.setText(tr(value))
+        self.detail.setText(tr(detail))
         if state:
             self.set_state(state)
 
@@ -117,7 +120,7 @@ class Sparkline(QWidget):
     def __init__(self, label: str, max_value: float = 100.0, capacity: int = 120,
                  color: str = theme.ACCENT, unit: str = "%"):
         super().__init__()
-        self.label, self.max_value, self.color, self.unit = label, max_value, QColor(color), unit
+        self.label, self.max_value, self.color, self.unit = tr(label), max_value, QColor(color), unit
         self.values: deque[float] = deque(maxlen=capacity)
         self.setMinimumHeight(90)
 
@@ -155,6 +158,6 @@ def fmt_bytes(n: float | None) -> str:
         return "—"
     for unit in ("B", "KB", "MB", "GB", "TB"):
         if abs(n) < 1024 or unit == "TB":
-            return f"{n:.1f} {unit}" if unit != "B" else f"{int(n)} B"
+            return f"{n:.1f} {tr(unit)}" if unit != "B" else f"{int(n)} {tr('B')}"
         n /= 1024
     return str(n)

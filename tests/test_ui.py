@@ -32,6 +32,33 @@ def test_camera_page_reports_not_installed_honestly(win):
         assert "Not" in page.cards["Camera device"].value.text()
 
 
+def test_camera_page_output_target_switch(win):
+    from vcstudio.camera.output import OUTPUT_TARGETS, target_for
+    page = win.pages[win.page_keys().index("camera")]
+    ctx = win.ctx
+    assert page.target.currentData() == "ai"
+    page.target.setCurrentIndex(page.target.findData("obs"))
+    o = ctx.settings.get("output")
+    assert (o["camera_device"], o["camera_sink"]) == (OUTPUT_TARGETS["obs"].device, OUTPUT_TARGETS["obs"].sink)
+    assert ctx.camera_out.device == "OBS Virtual Camera"            # applied live to the pipeline's output
+    assert "OBS Virtual Camera" in page.target_note.text()
+    page.target.setCurrentIndex(page.target.findData("ai"))
+    ctx.settings.set("input.method", "avfoundation")
+    ctx.settings.set("input.device_name_hint", "OBS Virtual Camera")
+    page.target.setCurrentIndex(page.target.findData("obs"))
+    assert ctx.settings.get("input.method") == "obs_ipc"            # switched to the plugin automatically
+    assert not ctx.feedback_loop_risk()
+    # OBS Virtual Camera as input while also the output is refused (feedback loop)
+    ctx.settings.set("input.method", "avfoundation")
+    ctx.settings.set("input.device_name_hint", "OBS Virtual Camera")
+    assert ctx.feedback_loop_risk()
+    ctx.settings.set("input.method", "obs_ipc")
+    assert not ctx.feedback_loop_risk()
+    page.target.setCurrentIndex(page.target.findData("ai"))
+    assert target_for(ctx.settings.get("output.camera_device"), ctx.settings.get("output.camera_sink")) == "ai"
+    assert target_for("Some Cam", "Some Sink") == "custom"
+
+
 def test_all_hotkey_actions_enabled(win):
     assert all(a.isEnabled() for a in win.actions_.actions.values())
 

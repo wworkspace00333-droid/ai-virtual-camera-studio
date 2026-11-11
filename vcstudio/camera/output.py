@@ -13,6 +13,34 @@ from vcstudio import CAMERA_NAME
 log = logging.getLogger(__name__)
 SINK_NAME = "AI Virtual Camera Input"
 
+
+class OutputTarget:
+    """A CMIO camera with a sink stream that the pipeline can feed."""
+
+    def __init__(self, key: str, label: str, device: str, sink: str, note: str):
+        self.key, self.label, self.device, self.sink, self.note = key, label, device, sink, note
+
+
+# "obs": OBS Studio's own camera extension (signed by OBS, already approved on most Macs that run OBS)
+# uses the same sink mechanism. It needs no Apple Developer account, but clients see it as
+# "OBS Virtual Camera", and OBS's own Start Virtual Camera must stay off while the app feeds it.
+OUTPUT_TARGETS = {
+    "ai": OutputTarget("ai", f"{CAMERA_NAME} (this app's camera extension)", CAMERA_NAME, SINK_NAME,
+                       f"Other apps select “{CAMERA_NAME}”. Needs the signed camera extension installed."),
+    "obs": OutputTarget("obs", "OBS Virtual Camera (no Apple Developer account needed)", "OBS Virtual Camera",
+                        "OBS Camera Extension Stream Sink",
+                        "Other apps select “OBS Virtual Camera”. Keep OBS's own Start Virtual Camera off, and take "
+                        "input with Direct OBS frame transfer (the vcstudio-obs plugin), not from OBS Virtual Camera."),
+}
+
+
+def target_for(device: str, sink: str) -> str:
+    """Key of the preset matching device+sink, or "custom"."""
+    for k, t in OUTPUT_TARGETS.items():
+        if (t.device, t.sink) == (device, sink):
+            return k
+    return "custom"
+
 OPEN_ERRORS = {
     -1: "the camera device is not installed or not visible (install and approve the camera extension)",
     -2: "the camera device has no sink stream (wrong or outdated extension)",

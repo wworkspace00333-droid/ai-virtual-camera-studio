@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from PySide6.QtCore import QObject, Qt, Signal
 from PySide6.QtGui import QAction, QKeySequence
 
+from vcstudio.i18n import tr
+
 log = logging.getLogger(__name__)
 
 
@@ -36,7 +38,7 @@ class ActionRegistry(QObject):
         super().__init__(parent_widget)
         self.actions: dict[str, QAction] = {}
         for spec in ACTION_SPECS:
-            a = QAction(spec.label, parent_widget)
+            a = QAction(tr(spec.label), parent_widget)
             a.setShortcutContext(Qt.ApplicationShortcut)
             a.setEnabled(spec.available_in_stage <= CURRENT_STAGE)
             if not a.isEnabled():

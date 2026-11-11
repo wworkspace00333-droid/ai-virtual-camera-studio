@@ -21,6 +21,8 @@ VERSION="$($PY -c 'import vcstudio; print(vcstudio.__version__)')"
 export VCS_VERSION="$VERSION"
 APP="$ROOT/dist/AI Virtual Camera Studio.app"
 SDK="${VCS_SDK:-$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX26.*.sdk 2>/dev/null | tail -1)}"
+# fall back to whatever SDK the selected toolchain provides (other Macs may not have the 26.x SDK)
+[[ -n "$SDK" ]] || SDK="$(xcrun --sdk macosx --show-sdk-path)"
 IDENTITY="${VCS_SIGN_IDENTITY:--}"
 
 echo "== native libraries"

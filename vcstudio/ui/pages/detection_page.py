@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (QButtonGroup, QHeaderView, QCheckBox, QDoubleSpin
 from vcstudio.ai.labels import FACE, GROUPS, group_of
 from vcstudio.core.config import PERFORMANCE_MODES
 from vcstudio.ui.widgets import Card, page_scaffold
+from vcstudio.i18n import tr
 
 
 class DetectionPage:
@@ -26,33 +27,33 @@ class DetectionPage:
         self.iou_lbl = QLabel()
         r1 = QHBoxLayout(); r1.addWidget(self.conf); r1.addWidget(self.conf_lbl)
         r2 = QHBoxLayout(); r2.addWidget(self.iou); r2.addWidget(self.iou_lbl)
-        self.freq_auto = QRadioButton("From performance mode")
-        self.freq_fixed = QRadioButton("Fixed rate")
+        self.freq_auto = QRadioButton(tr("From performance mode"))
+        self.freq_fixed = QRadioButton(tr("Fixed rate"))
         self.freq_group = QButtonGroup(self.widget)
         self.freq_group.addButton(self.freq_auto); self.freq_group.addButton(self.freq_fixed)
-        self.fixed = QDoubleSpinBox(); self.fixed.setRange(1, 60); self.fixed.setSuffix(" fps"); self.fixed.setDecimals(0)
+        self.fixed = QDoubleSpinBox(); self.fixed.setRange(1, 60); self.fixed.setSuffix(tr(" fps")); self.fixed.setDecimals(0)
         r3 = QHBoxLayout(); r3.addWidget(self.freq_auto); r3.addWidget(self.freq_fixed); r3.addWidget(self.fixed); r3.addStretch()
         self.mode_lbl = QLabel(); self.mode_lbl.setObjectName("muted")
-        self.show = QCheckBox("Show detection boxes on the original preview")
+        self.show = QCheckBox(tr("Show detection boxes on the original preview"))
         self.show.setChecked(True)
-        f.addRow("Confidence threshold", r1)
-        f.addRow("NMS IoU threshold", r2)
-        f.addRow("Detection frequency", r3)
-        f.addRow("", self.mode_lbl)
-        f.addRow("", self.show)
+        f.addRow(tr("Confidence threshold"), r1)
+        f.addRow(tr("NMS IoU threshold"), r2)
+        f.addRow(tr("Detection frequency"), r3)
+        f.addRow(tr(""), self.mode_lbl)
+        f.addRow(tr(""), self.show)
         params.layout_.addLayout(f)
         params.layout_.addStretch()
         top.addWidget(params, 3)
 
         classes = Card("Classes")
-        self.cls_all = QRadioButton("Detect all classes except the checked ones")
-        self.cls_only = QRadioButton("Detect only the checked classes")
+        self.cls_all = QRadioButton(tr("Detect all classes except the checked ones"))
+        self.cls_only = QRadioButton(tr("Detect only the checked classes"))
         self.cls_group = QButtonGroup(self.widget)
         self.cls_group.addButton(self.cls_all); self.cls_group.addButton(self.cls_only)
         classes.layout_.addWidget(self.cls_all); classes.layout_.addWidget(self.cls_only)
         sr = QHBoxLayout()
-        self.search = QLineEdit(); self.search.setPlaceholderText("Search classes…")
-        clear = QPushButton("Uncheck all")
+        self.search = QLineEdit(); self.search.setPlaceholderText(tr("Search classes…"))
+        clear = QPushButton(tr("Uncheck all"))
         sr.addWidget(self.search); sr.addWidget(clear)
         classes.layout_.addLayout(sr)
         self.tree = QTreeWidget(); self.tree.setHeaderHidden(True); self.tree.setMinimumHeight(260)
@@ -62,7 +63,7 @@ class DetectionPage:
 
         live = Card("Live detections")
         self.table = QTableWidget(0, 7)
-        self.table.setHorizontalHeaderLabels(["ID", "Class", "State", "Confidence", "Box (x0, y0, x1, y1)", "Size", "Age"])
+        self.table.setHorizontalHeaderLabels([tr("ID"), tr("Class"), tr("State"), tr("Confidence"), tr("Box (x0, y0, x1, y1)"), tr("Size"), tr("Age")])
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.table.setMinimumHeight(200)
@@ -72,23 +73,23 @@ class DetectionPage:
         lay.addWidget(live)
         trk = Card("Tracking (ByteTrack)")
         tf = QFormLayout()
-        self.trk_on = QCheckBox("Track objects (stable IDs, smoothing, occlusion recovery, per-frame interpolation)")
+        self.trk_on = QCheckBox(tr("Track objects (stable IDs, smoothing, occlusion recovery, per-frame interpolation)"))
         self.trk_low = QDoubleSpinBox(); self.trk_low.setRange(0.01, 0.5); self.trk_low.setSingleStep(0.05)
-        self.trk_buf = QDoubleSpinBox(); self.trk_buf.setRange(0.1, 10); self.trk_buf.setSuffix(" s"); self.trk_buf.setSingleStep(0.5)
-        self.trk_coast = QDoubleSpinBox(); self.trk_coast.setRange(0.0, 3); self.trk_coast.setSuffix(" s"); self.trk_coast.setSingleStep(0.1)
+        self.trk_buf = QDoubleSpinBox(); self.trk_buf.setRange(0.1, 10); self.trk_buf.setSuffix(tr(" s")); self.trk_buf.setSingleStep(0.5)
+        self.trk_coast = QDoubleSpinBox(); self.trk_coast.setRange(0.0, 3); self.trk_coast.setSuffix(tr(" s")); self.trk_coast.setSingleStep(0.1)
         self.trk_smooth = QSlider(Qt.Horizontal); self.trk_smooth.setRange(0, 100)
         self.trk_smooth_lbl = QLabel()
         rs = QHBoxLayout(); rs.addWidget(self.trk_smooth); rs.addWidget(self.trk_smooth_lbl)
-        self.trk_class = QCheckBox("Class-aware matching (an ID never changes class)")
-        tf.addRow("", self.trk_on)
-        tf.addRow("Low-score threshold", self.trk_low)
-        tf.addRow("Lost-object recovery window", self.trk_buf)
-        tf.addRow("Keep showing lost objects for", self.trk_coast)
-        tf.addRow("Smoothing", rs)
-        tf.addRow("", self.trk_class)
+        self.trk_class = QCheckBox(tr("Class-aware matching (an ID never changes class)"))
+        tf.addRow(tr(""), self.trk_on)
+        tf.addRow(tr("Low-score threshold"), self.trk_low)
+        tf.addRow(tr("Lost-object recovery window"), self.trk_buf)
+        tf.addRow(tr("Keep showing lost objects for"), self.trk_coast)
+        tf.addRow(tr("Smoothing"), rs)
+        tf.addRow(tr(""), self.trk_class)
         trk.layout_.addLayout(tf)
-        note = QLabel("The confidence threshold above is ByteTrack's high threshold. Detections between the "
-                      "low and high thresholds can only continue existing tracks.")
+        note = QLabel(tr("The confidence threshold above is ByteTrack's high threshold. Detections between the "
+                      "low and high thresholds can only continue existing tracks."))
         note.setObjectName("muted"); note.setWordWrap(True)
         trk.layout_.addWidget(note)
         self.trk_stats = QLabel(); self.trk_stats.setObjectName("muted")
@@ -127,11 +128,11 @@ class DetectionPage:
         for g in list(GROUPS) + ["Other"]:
             if g not in groups:
                 continue
-            gi = QTreeWidgetItem([g])
+            gi = QTreeWidgetItem([tr(g)])
             gi.setFlags(gi.flags() | Qt.ItemIsAutoTristate | Qt.ItemIsUserCheckable)
             self.tree.addTopLevelItem(gi)
             for n in groups[g]:
-                it = QTreeWidgetItem([n + ("  (Vision; requires face detection on AI Engine page)" if n == FACE else "")])
+                it = QTreeWidgetItem([tr(n) + ("  (" + tr("Vision; requires face detection on AI Engine page") + ")" if n == FACE else "")])
                 it.setData(0, Qt.UserRole, n)
                 it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
                 it.setCheckState(0, Qt.Unchecked)
@@ -173,8 +174,8 @@ class DetectionPage:
         for w in (self.trk_low, self.trk_buf, self.trk_coast, self.trk_smooth, self.trk_class):
             w.setEnabled(self.trk_on.isChecked())
         mode = PERFORMANCE_MODES[self.ctx.settings.get("performance.mode")]
-        tgt = "as fast as sustainable" if mode.ai_fps is None else f"{mode.ai_fps:g} fps"
-        self.mode_lbl.setText(f"Current performance mode: {mode.label} → AI target {tgt}")
+        tgt = tr("as fast as sustainable") if mode.ai_fps is None else f"{mode.ai_fps:g} " + tr("fps")
+        self.mode_lbl.setText(tr("Current performance mode: {mode} → AI target {tgt}", mode=tr(mode.label), tgt=tgt))
 
     def _changed(self, *_):
         self._update_labels()
@@ -230,22 +231,23 @@ class DetectionPage:
         s = self.ctx.ai.stats()
         if res is None:
             self.table.setRowCount(0)
-            self.live_info.setText(f"AI state: {s.state}")
+            self.live_info.setText(tr("AI state: {state}", state=tr(s.state)))
             return
-        self.trk_stats.setText(f"Tracked {s.tracks_active} · lost (recoverable) {s.tracks_lost} · IDs created "
-                               f"{s.track_ids_created} · recoveries {s.tracks_recovered} · update {s.tracker_ms:.2f} ms")
+        self.trk_stats.setText(tr("Tracked {a} · lost (recoverable) {l} · IDs created {c} · recoveries {r} · update {ms} ms",
+                                  a=s.tracks_active, l=s.tracks_lost, c=s.track_ids_created, r=s.tracks_recovered,
+                                  ms=f"{s.tracker_ms:.2f}"))
         if self.trk_on.isChecked():
             from vcstudio.core.frame import host_time_s
             objs = sorted(self.ctx.ai.tracked_at(host_time_s()), key=lambda o: o.track_id)
-            self.live_info.setText(f"{len(objs)} tracked objects · {len(res.detections)} detections ≥ threshold · "
-                                   f"{res.model} {res.inference_ms:.1f} ms")
-            rows = [(f"#{o.track_id}", o.label, o.state, f"{o.confidence:.2f}",
+            self.live_info.setText(tr("{t} tracked objects · {d} detections ≥ threshold", t=len(objs), d=len(res.detections))
+                                   + f" · {res.model} {res.inference_ms:.1f} " + tr("ms"))
+            rows = [(f"#{o.track_id}", tr(o.label), tr(o.state), f"{o.confidence:.2f}",
                      f"{o.x0:.0f}, {o.y0:.0f}, {o.x1:.0f}, {o.y1:.0f}", f"{o.x1 - o.x0:.0f}×{o.y1 - o.y0:.0f}",
                      f"{o.age_s:.1f} s") for o in objs]
         else:
-            self.live_info.setText(f"{len(res.detections)} shown of {res.raw_count} detected · frame #{res.frame_seq} · "
-                                   f"{res.model} {res.inference_ms:.1f} ms")
-            rows = [("—", d.label, "detected", f"{d.confidence:.2f}",
+            self.live_info.setText(tr("{n} shown of {raw} detected · frame #{seq}", n=len(res.detections),
+                                      raw=res.raw_count, seq=res.frame_seq) + f" · {res.model} {res.inference_ms:.1f} " + tr("ms"))
+            rows = [("—", tr(d.label), tr("detected"), f"{d.confidence:.2f}",
                      f"{d.x0:.0f}, {d.y0:.0f}, {d.x1:.0f}, {d.y1:.0f}", f"{d.w:.0f}×{d.h:.0f}", "")
                     for d in sorted(res.detections, key=lambda d: -d.confidence)]
         self.table.setRowCount(len(rows))

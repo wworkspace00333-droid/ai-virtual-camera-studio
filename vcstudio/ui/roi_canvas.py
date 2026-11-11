@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import math
 
+from vcstudio.i18n import tr
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF
 
@@ -253,7 +254,7 @@ class RoiCanvas(VideoView):
             ax, bx = (min(max(v, 0), 1) for v in (ax, bx))
             ay, by = (min(max(v, 0), 1) for v in (ay, by))
             if abs(bx - ax) * fw >= MIN_PX * 2 and abs(by - ay) * fh >= MIN_PX * 2:
-                r = new_rect(self._next_name("Region"), ax, ay, bx, by)
+                r = new_rect(self._next_name(tr("Region")), ax, ay, bx, by)
                 r.priority = max((q.priority for q in self.rois), default=-1) + 1
                 self.rois.append(r)
                 self.selected = r.id
@@ -285,7 +286,7 @@ class RoiCanvas(VideoView):
     def _finish_polygon(self) -> None:
         pts, self._poly_pts = self._poly_pts, []
         try:
-            r = new_polygon(self._next_name("Polygon"), pts)
+            r = new_polygon(self._next_name(tr("Polygon")), pts)
         except ValueError:
             self.update()
             return
@@ -341,7 +342,9 @@ class RoiCanvas(VideoView):
                 y = target.y() + target.height() * i / 9
                 p.drawLine(QPointF(target.left(), y), QPointF(target.right(), y))
             p.setPen(QColor(theme.MUTED))
-            p.drawText(target, Qt.AlignCenter, f"{self.frame_size[0]}×{self.frame_size[1]}: start capture to see live video")
+            if not self.overlay:     # the base view already shows the capture state otherwise
+                p.drawText(target, Qt.AlignCenter, f"{self.frame_size[0]}×{self.frame_size[1]}" +
+                           tr(": start capture to see live video"))
 
     def paint_foreground(self, p: QPainter, target: QRectF) -> None:
         p.setRenderHint(QPainter.Antialiasing)
@@ -358,7 +361,7 @@ class RoiCanvas(VideoView):
             p.setPen(pen)
             p.setBrush(QColor(col.red(), col.green(), col.blue(), 40))
             p.drawPolygon(QPolygonF([self.px_to_widget(x, y) for x, y in reg.polygon]))
-            tag = f"{reg.roi_name} · #{reg.track_id} {reg.label}"
+            tag = f"{reg.roi_name} · #{reg.track_id} {tr(reg.label)}"
             tl = self.px_to_widget(reg.bbox[0], reg.bbox[1])
             p.fillRect(QRectF(tl.x(), tl.y(), p.fontMetrics().horizontalAdvance(tag) + 8, 18), col)
             p.setPen(QColor("black"))

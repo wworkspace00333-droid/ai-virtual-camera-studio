@@ -15,6 +15,7 @@ from vcstudio.replacement.spec import EFFECTS, FITS, MODES, VIDEO_SYNC, Replacem
 from vcstudio.roi.model import rois_from_profile
 from vcstudio.ui.video_view import VideoView
 from vcstudio.ui.widgets import Card, page_scaffold
+from vcstudio.i18n import tr
 
 log = logging.getLogger(__name__)
 PREVIEW_FPS = 15
@@ -41,7 +42,7 @@ class ReplacementPage:
         self.assets.setResizeMode(QListWidget.Adjust); self.assets.setMinimumHeight(220); self.assets.setSpacing(6)
         lib.layout_.addWidget(self.assets)
         ar = QHBoxLayout()
-        self.add_btn = QPushButton("Add images / videos…"); self.rm_btn = QPushButton("Remove")
+        self.add_btn = QPushButton(tr("Add images / videos…")); self.rm_btn = QPushButton(tr("Remove"))
         ar.addWidget(self.add_btn); ar.addWidget(self.rm_btn); ar.addStretch()
         lib.layout_.addLayout(ar)
         self.asset_info = QLabel(); self.asset_info.setObjectName("muted"); self.asset_info.setWordWrap(True)
@@ -52,78 +53,78 @@ class ReplacementPage:
         st = Card("Replacement for ROI")
         f = QFormLayout()
         self.roi = QComboBox()
-        self.enabled = QCheckBox("Enabled")
+        self.enabled = QCheckBox(tr("Enabled"))
         self.mode = QComboBox()
         for k, v in MODES.items():
-            self.mode.addItem(v, k)
+            self.mode.addItem(tr(v), k)
         self.asset = QComboBox()
         self.fit = QComboBox()
         for k, v in FITS.items():
-            self.fit.addItem(v, k)
+            self.fit.addItem(tr(v), k)
         self.scale = QDoubleSpinBox(); self.scale.setRange(0.05, 10); self.scale.setSingleStep(0.05)
         self.offx = QDoubleSpinBox(); self.offy = QDoubleSpinBox()
         for sp in (self.offx, self.offy):
             sp.setRange(-2, 2); sp.setSingleStep(0.02); sp.setDecimals(3)
-        self.rot = QDoubleSpinBox(); self.rot.setRange(-180, 180); self.rot.setSuffix("°")
+        self.rot = QDoubleSpinBox(); self.rot.setRange(-180, 180); self.rot.setSuffix(tr("°"))
         self.opacity = QSlider(Qt.Horizontal); self.opacity.setRange(0, 100)
         self.crop = [QDoubleSpinBox() for _ in range(4)]
         for sp in self.crop:
             sp.setRange(0, 1); sp.setSingleStep(0.01); sp.setDecimals(3)
-        self.feather = QDoubleSpinBox(); self.feather.setRange(0, 100); self.feather.setSuffix(" px")
+        self.feather = QDoubleSpinBox(); self.feather.setRange(0, 100); self.feather.setSuffix(tr(" px"))
         self.bg_btn = QPushButton(); self.bg_btn.setMinimumWidth(120)
         self.thresh = QDoubleSpinBox(); self.thresh.setRange(0.1, 0.9); self.thresh.setSingleStep(0.05)
-        self.refine = QCheckBox("Refine edges (remove specks, close holes)")
+        self.refine = QCheckBox(tr("Refine edges (remove specks, close holes)"))
         self.fallback = QComboBox()
-        self.fallback.addItem("Skip the object (no fake silhouette)", "skip")
-        self.fallback.addItem("Use its box (explicitly rectangular)", "box")
+        self.fallback.addItem(tr("Skip the object (no fake silhouette)"), "skip")
+        self.fallback.addItem(tr("Use its box (explicitly rectangular)"), "box")
         r_off = QHBoxLayout(); r_off.addWidget(self.offx); r_off.addWidget(self.offy)
         r_crop = QHBoxLayout()
         for sp in self.crop:
             r_crop.addWidget(sp)
-        f.addRow("ROI", self.roi); f.addRow("", self.enabled); f.addRow("Mode", self.mode); f.addRow("Asset", self.asset)
-        f.addRow("Fit", self.fit); f.addRow("Scale", self.scale); f.addRow("Offset x, y (× region)", r_off)
-        f.addRow("Rotation", self.rot); f.addRow("Opacity", self.opacity)
-        f.addRow("Crop x0, y0, x1, y1", r_crop); f.addRow("Edge feather", self.feather)
-        f.addRow("Background fill", self.bg_btn)
-        f.addRow("Mask threshold", self.thresh); f.addRow("", self.refine); f.addRow("Without mask", self.fallback)
+        f.addRow(tr("ROI"), self.roi); f.addRow(tr(""), self.enabled); f.addRow(tr("Mode"), self.mode); f.addRow(tr("Asset"), self.asset)
+        f.addRow(tr("Fit"), self.fit); f.addRow(tr("Scale"), self.scale); f.addRow(tr("Offset x, y (× region)"), r_off)
+        f.addRow(tr("Rotation"), self.rot); f.addRow(tr("Opacity"), self.opacity)
+        f.addRow(tr("Crop x0, y0, x1, y1"), r_crop); f.addRow(tr("Edge feather"), self.feather)
+        f.addRow(tr("Background fill"), self.bg_btn)
+        f.addRow(tr("Mask threshold"), self.thresh); f.addRow(tr(""), self.refine); f.addRow(tr("Without mask"), self.fallback)
         st.layout_.addLayout(f)
         # ---- effects
         self.effect_box = QWidget(); ef = QFormLayout(self.effect_box); ef.setContentsMargins(0, 6, 0, 0)
         self.effect = QComboBox()
         for k, v in EFFECTS.items():
-            self.effect.addItem(v, k)
-        self.sigma = QDoubleSpinBox(); self.sigma.setRange(0.5, 100); self.sigma.setSuffix(" px σ")
-        self.pix = QSpinBox(); self.pix.setRange(2, 256); self.pix.setSuffix(" px")
+            self.effect.addItem(tr(v), k)
+        self.sigma = QDoubleSpinBox(); self.sigma.setRange(0.5, 100); self.sigma.setSuffix(tr(" px σ"))
+        self.pix = QSpinBox(); self.pix.setRange(2, 256); self.pix.setSuffix(tr(" px"))
         self.bright = QDoubleSpinBox(); self.bright.setRange(-1, 1); self.bright.setSingleStep(0.05)
         self.contrast = QDoubleSpinBox(); self.contrast.setRange(0, 3); self.contrast.setSingleStep(0.05)
         self.sat = QDoubleSpinBox(); self.sat.setRange(0, 3); self.sat.setSingleStep(0.05)
-        ef.addRow("Effect", self.effect); ef.addRow("Blur strength", self.sigma); ef.addRow("Pixel size", self.pix)
-        ef.addRow("Brightness", self.bright); ef.addRow("Contrast", self.contrast); ef.addRow("Saturation", self.sat)
+        ef.addRow(tr("Effect"), self.effect); ef.addRow(tr("Blur strength"), self.sigma); ef.addRow(tr("Pixel size"), self.pix)
+        ef.addRow(tr("Brightness"), self.bright); ef.addRow(tr("Contrast"), self.contrast); ef.addRow(tr("Saturation"), self.sat)
         st.layout_.addWidget(self.effect_box)
         # ---- video playback
         self.video_box = QWidget(); vf = QFormLayout(self.video_box); vf.setContentsMargins(0, 6, 0, 0)
-        self.v_loop = QCheckBox("Loop")
-        self.v_end = QComboBox(); self.v_end.addItem("Hold last frame", "hold"); self.v_end.addItem("Hide", "hide")
-        self.v_off = QDoubleSpinBox(); self.v_off.setRange(0, 36000); self.v_off.setSuffix(" s"); self.v_off.setDecimals(2)
-        self.v_rate = QDoubleSpinBox(); self.v_rate.setRange(0.1, 8); self.v_rate.setSingleStep(0.25); self.v_rate.setSuffix("×")
-        self.v_interp = QComboBox(); self.v_interp.addItem("Nearest frame (drop/repeat)", "nearest")
-        self.v_interp.addItem("Blend neighbouring frames", "blend")
+        self.v_loop = QCheckBox(tr("Loop"))
+        self.v_end = QComboBox(); self.v_end.addItem(tr("Hold last frame"), "hold"); self.v_end.addItem(tr("Hide"), "hide")
+        self.v_off = QDoubleSpinBox(); self.v_off.setRange(0, 36000); self.v_off.setSuffix(tr(" s")); self.v_off.setDecimals(2)
+        self.v_rate = QDoubleSpinBox(); self.v_rate.setRange(0.1, 8); self.v_rate.setSingleStep(0.25); self.v_rate.setSuffix(tr("×"))
+        self.v_interp = QComboBox(); self.v_interp.addItem(tr("Nearest frame (drop/repeat)"), "nearest")
+        self.v_interp.addItem(tr("Blend neighbouring frames"), "blend")
         self.v_sync = QComboBox()
         for k, v in VIDEO_SYNC.items():
-            self.v_sync.addItem(v, k)
+            self.v_sync.addItem(tr(v), k)
         self.v_max = QComboBox()
         for v in (640, 960, 1280, 1920, 3840):
             self.v_max.addItem(f"{v} px", v)
-        r_end = QHBoxLayout(); r_end.addWidget(self.v_loop); r_end.addWidget(QLabel("At end:")); r_end.addWidget(self.v_end)
-        vf.addRow("Playback", r_end); vf.addRow("Start offset", self.v_off); vf.addRow("Speed", self.v_rate)
-        vf.addRow("Frame-rate conversion", self.v_interp); vf.addRow("Synchronisation", self.v_sync)
-        vf.addRow("Decode size (long side)", self.v_max)
-        tr = QHBoxLayout()
-        self.v_play = QPushButton("Pause / Play"); self.v_restart = QPushButton("Restart")
-        tr.addWidget(self.v_play); tr.addWidget(self.v_restart); tr.addStretch()
-        vf.addRow("Transport", tr)
+        r_end = QHBoxLayout(); r_end.addWidget(self.v_loop); r_end.addWidget(QLabel(tr("At end:"))); r_end.addWidget(self.v_end)
+        vf.addRow(tr("Playback"), r_end); vf.addRow(tr("Start offset"), self.v_off); vf.addRow(tr("Speed"), self.v_rate)
+        vf.addRow(tr("Frame-rate conversion"), self.v_interp); vf.addRow(tr("Synchronisation"), self.v_sync)
+        vf.addRow(tr("Decode size (long side)"), self.v_max)
+        trow = QHBoxLayout()
+        self.v_play = QPushButton(tr("Pause / Play")); self.v_restart = QPushButton(tr("Restart"))
+        trow.addWidget(self.v_play); trow.addWidget(self.v_restart); trow.addStretch()
+        vf.addRow(tr("Transport"), trow)
         self.v_status = QLabel(); self.v_status.setObjectName("muted"); self.v_status.setWordWrap(True)
-        vf.addRow("", self.v_status)
+        vf.addRow(tr(""), self.v_status)
         st.layout_.addWidget(self.video_box)
         self.warn = QLabel(); self.warn.setWordWrap(True); self.warn.setStyleSheet("color: #d29922;")
         st.layout_.addWidget(self.warn)
@@ -131,15 +132,15 @@ class ReplacementPage:
         lay.addLayout(top)
 
         pv = Card("Live replacement preview")
-        note = QLabel(f"Rendered here at ≤{PREVIEW_FPS} fps with the active compositor (Metal GPU, or CPU fallback; "
-                      "see Settings). The 60 fps output pipeline and virtual camera come in Stages 9–10.")
+        note = QLabel(tr("Rendered here at ≤{fps} fps with the active compositor (Metal GPU, or CPU fallback; see "
+                         "Settings). The full 60 fps output runs from the Preview page.", fps=PREVIEW_FPS))
         note.setObjectName("muted"); note.setWordWrap(True)
         pv.layout_.addWidget(note)
         self.view = VideoView("REPLACEMENT PREVIEW"); self.view.setMinimumHeight(420)
         pv.layout_.addWidget(self.view)
         sr = QHBoxLayout()
         self.stats = QLabel(); self.stats.setObjectName("muted")
-        self.reset_btn = QPushButton("Re-enable failed ROIs")
+        self.reset_btn = QPushButton(tr("Re-enable failed ROIs"))
         sr.addWidget(self.stats, 1); sr.addWidget(self.reset_btn)
         pv.layout_.addLayout(sr)
         lay.addWidget(pv)
@@ -198,7 +199,7 @@ class ReplacementPage:
                 th = self.ctx.assets.thumbnail(a, 88)
                 it.setIcon(QIcon(QPixmap.fromImage(_qimage_bgra(th))))
             except AssetError as e:
-                it.setText(f"{a.name} (missing)"); it.setToolTip(str(e))
+                it.setText(f"{a.name} (" + tr("missing") + ")"); it.setToolTip(tr(str(e)))
             self.assets.addItem(it)
             if a.id == cur:
                 self.assets.setCurrentItem(it)
@@ -206,11 +207,11 @@ class ReplacementPage:
         self.asset.blockSignals(True)
         sel = self.asset.currentData()
         self.asset.clear()
-        self.asset.addItem("— none —", "")
+        self.asset.addItem(tr("— none —"), "")
         for a in assets.values():
-            label = (f"{a.name} (image, {a.width}×{a.height})" if a.kind == "image" else
-                     f"{a.name} (video, {a.width}×{a.height}, {a.duration:.1f} s, {a.fps:g} fps)")
-            self.asset.addItem(label, a.id)
+            label = (f"{a.name} (" + tr("image") + f", {a.width}×{a.height})" if a.kind == "image" else
+                     f"{a.name} (" + tr("video") + f", {a.width}×{a.height}, {a.duration:.1f} " + tr("s") + f", {a.fps:g} fps)")
+            self.asset.addItem(tr(label), a.id)
         self.asset.setCurrentIndex(max(0, self.asset.findData(sel)))
         self.asset.blockSignals(False)
         self._asset_selected()
@@ -221,7 +222,7 @@ class ReplacementPage:
         self.roi.blockSignals(True)
         self.roi.clear()
         for r in sorted(rois, key=lambda r: (-r.priority, r.name)):
-            self.roi.addItem(f"{r.name}  [{r.mode}]", r.id)
+            self.roi.addItem(f"{r.name}  [{tr(r.mode)}]", r.id)
         idx = self.roi.findData(cur) if cur else 0
         self.roi.setCurrentIndex(max(0, idx))
         self.roi.blockSignals(False)
@@ -230,7 +231,7 @@ class ReplacementPage:
         for w in self._controls + [self.bg_btn]:
             w.setEnabled(bool(rois))
         if not rois:
-            self.warn.setText("No ROIs in this profile yet. Draw one on the ROI Editor page.")
+            self.warn.setText(tr("No ROIs in this profile yet. Draw one on the ROI Editor page."))
 
     def _roi_dict(self) -> dict | None:
         rid = self.roi.currentData()
@@ -365,7 +366,7 @@ class ReplacementPage:
     def add_assets(self, paths: list[str] | None = None):
         if paths is None:
             exts = " ".join(f"*{e}" for e in sorted(IMAGE_EXTS | VIDEO_EXTS))
-            paths, _ = QFileDialog.getOpenFileNames(self.widget, "Add assets", str(Path.home()), f"Media ({exts})")
+            paths, _ = QFileDialog.getOpenFileNames(self.widget, tr("Add assets"), str(Path.home()), f"Media ({exts})")
         added, errors = [], []
         for p in paths:
             try:
@@ -378,7 +379,7 @@ class ReplacementPage:
             if self.asset.currentData() == "" and len(added) == 1:
                 self.asset.setCurrentIndex(self.asset.findData(added[0]["id"]))
         if errors:
-            QMessageBox.warning(self.widget, "Assets", "\n".join(errors))
+            QMessageBox.warning(self.widget, tr("Assets"), tr("\n").join(errors))
         return added
 
     def remove_asset(self):
@@ -387,8 +388,8 @@ class ReplacementPage:
             return
         aid = it.data(Qt.UserRole)
         used = [r["name"] for r in self._body().get("rois", []) if (r.get("replacement") or {}).get("asset_id") == aid]
-        if used and QMessageBox.question(self.widget, "Remove asset",
-                                         f"Used by: {', '.join(used)}. Remove anyway?") != QMessageBox.Yes:
+        if used and QMessageBox.question(self.widget, tr("Remove asset"),
+                                         tr("Used by: {names}. Remove anyway?", names=', '.join(used))) != QMessageBox.Yes:
             return
         asset = assets_from_profile(self._body()).get(aid)
 
@@ -409,12 +410,13 @@ class ReplacementPage:
         a = assets_from_profile(self._body()).get(it.data(Qt.UserRole)) if it else None
         if a is not None and a.kind == "video":
             dec = "FFmpeg (software)" if a.decoder == "ffmpeg" else ("VideoToolbox hardware" if a.hardware else "AVFoundation")
-            self.asset_info.setText(f"{a.name}: video {a.width}×{a.height}, {a.fps:g} fps, {a.duration:.2f} s, "
-                                    f"codec {a.codec}, decoder {dec}")
+            self.asset_info.setText(f"{a.name}: " + tr("video {w}×{h}, {fps} fps, {d} s, codec {codec}, decoder {dec}",
+                                    w=a.width, h=a.height, fps=f"{a.fps:g}", d=f"{a.duration:.2f}", codec=a.codec, dec=dec))
         else:
-            self.asset_info.setText(f"{a.name}: image {a.width}×{a.height}, stored as {a.file}" if a else
-                                    "Images: PNG / JPG / WEBP (alpha). Videos: MP4 / MOV (hardware decode); other "
-                                    "containers via FFmpeg if installed. Files are copied into the app's assets folder.")
+            self.asset_info.setText(f"{a.name}: " + tr("image {w}×{h}, stored as {file}", w=a.width, h=a.height, file=a.file)
+                                    if a else
+                                    tr("Images: PNG / JPG / WEBP (alpha). Videos: MP4 / MOV (hardware decode); other "
+                                       "containers via FFmpeg if installed. Files are copied into the app's assets folder."))
 
     # ---------------------------------------------------------------- preview
     def _render(self):
@@ -424,7 +426,7 @@ class ReplacementPage:
         if f is None:
             self.view.set_image(None)
             self.view.set_overlay("Start capture to preview replacements", "idle")
-            self.stats.setText("")
+            self.stats.setText(tr(""))
             return
         tracked = self.ctx.ai.tracked_at(f.pts)
         regions = self.ctx.rois.resolve(tracked, f.width, f.height)
@@ -433,25 +435,26 @@ class ReplacementPage:
                 out = self.ctx.replacement.render(a, regions, f.pts)
         except Exception as e:
             log.exception("preview render failed")
-            self.stats.setText(f"Render failed: {e}")
+            self.stats.setText(tr("Render failed: {e}", e=e))
             return
         step = max(1, -(-out.shape[1] // max(640, self.view.width())))
         small = out[::step, ::step].copy()
         self.view.set_image(_qimage_bgra(small))
         self.view.set_overlay("", "ok")
         cs = self.ctx.replacement.compositor.stats
-        fail = f" · failed: {', '.join(cs.failed_rois)}" if cs.failed_rois else ""
-        gpu = f" (GPU {cs.gpu_ms:.2f} ms)" if cs.backend == "metal" else ""
-        self.stats.setText(f"{cs.backend.upper()} compositor{gpu} · render {cs.render_ms:.1f} ms · {cs.regions_drawn} region(s) drawn · "
-                           f"{cs.skipped_no_mask} skipped (no mask) · {len(regions)} active region(s) · "
-                           f"{cs.video_players} video player(s){fail}")
+        fail = " · " + tr("failed: {names}", names=', '.join(cs.failed_rois)) if cs.failed_rois else ""
+        gpu = f" (GPU {cs.gpu_ms:.2f} " + tr("ms") + ")" if cs.backend == "metal" else ""
+        self.stats.setText(tr("{backend} compositor", backend=cs.backend.upper()) + gpu + " · " + tr(
+            "render {ms} ms · {drawn} region(s) drawn · {skipped} skipped (no mask) · {active} active region(s) · "
+            "{players} video player(s)", ms=f"{cs.render_ms:.1f}", drawn=cs.regions_drawn, skipped=cs.skipped_no_mask,
+            active=len(regions), players=cs.video_players) + fail)
         players = self.ctx.replacement.players_for_roi(self.roi.currentData())
         if players and self.video_box.isVisible():
             p = players[0].stats
-            more = f" (+{len(players) - 1} more)" if len(players) > 1 else ""
-            self.v_status.setText(f"{'Paused' if p.paused else ('Ended' if p.ended else 'Playing')}{more} · "
-                                  f"{p.position_s:.2f} / {p.duration_s:.2f} s · decoder {p.decoder} · buffer {p.buffered} · "
-                                  f"decoded {p.decoded} · late {p.late_frames} · loops {p.loops}" +
-                                  (f" · error: {p.error}" if p.error else ""))
+            more = " " + tr("(+{n} more)", n=len(players) - 1) if len(players) > 1 else ""
+            self.v_status.setText(tr('Paused' if p.paused else ('Ended' if p.ended else 'Playing')) + more + " · " + tr(
+                "{pos} / {dur} s · decoder {dec} · buffer {buf} · decoded {decd} · late {late} · loops {loops}",
+                pos=f"{p.position_s:.2f}", dur=f"{p.duration_s:.2f}", dec=p.decoder, buf=p.buffered, decd=p.decoded,
+                late=p.late_frames, loops=p.loops) + (" · " + tr("error: {e}", e=p.error) if p.error else ""))
         elif self.video_box.isVisible():
-            self.v_status.setText("Not playing (the ROI has no active region right now)")
+            self.v_status.setText(tr("Not playing (the ROI has no active region right now)"))

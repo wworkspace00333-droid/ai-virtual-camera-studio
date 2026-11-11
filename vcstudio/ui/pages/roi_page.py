@@ -11,6 +11,7 @@ from vcstudio.core.frame import host_time_s
 from vcstudio.roi.model import MODES, ROI, ROIError
 from vcstudio.ui.roi_canvas import MODE_COLORS, RoiCanvas
 from vcstudio.ui.widgets import Card
+from vcstudio.i18n import tr
 
 log = logging.getLogger(__name__)
 
@@ -30,7 +31,7 @@ class ROIPage:
 
         # ---------------- left: toolbar + canvas
         left = QVBoxLayout()
-        head = QLabel("ROI Editor"); head.setObjectName("h1")
+        head = QLabel(tr("ROI Editor")); head.setObjectName("h1")
         left.addWidget(head)
         bar = QHBoxLayout()
         self.tools = QButtonGroup(self.widget)
@@ -38,12 +39,12 @@ class ROIPage:
         for key, label, tip in (("select", "Select", "Select, move, resize (Shift keeps aspect), rotate (Shift snaps 15°)"),
                                 ("rect", "Rectangle", "Drag to draw a rectangle"),
                                 ("polygon", "Polygon", "Click points; double-click / Enter / click first point to close")):
-            b = QToolButton(); b.setText(label); b.setCheckable(True); b.setToolTip(tip)
+            b = QToolButton(); b.setText(tr(label)); b.setCheckable(True); b.setToolTip(tr(tip))
             b.setMinimumWidth(90)
             self.tools.addButton(b); self.tool_btns[key] = b
             bar.addWidget(b)
         self.tool_btns["select"].setChecked(True)
-        self.add_auto = QPushButton("+ Automatic AI region")
+        self.add_auto = QPushButton(tr("+ Automatic AI region"))
         bar.addWidget(self.add_auto)
         bar.addStretch()
         self.hint = QLabel(); self.hint.setObjectName("muted")
@@ -53,8 +54,8 @@ class ROIPage:
         self.canvas.setMinimumSize(640, 360)
         feeder.add_view(self.canvas)
         left.addWidget(self.canvas, 1)
-        legend = QLabel(" · ".join(f"<span style='color:{MODE_COLORS[m].name()}'>■</span> {m}" for m in MODES) +
-                        " · dashed = live regions resolved from tracked objects")
+        legend = QLabel(" · ".join(f"<span style='color:{MODE_COLORS[m].name()}'>■</span> {tr(m)}" for m in MODES) +
+                        " · " + tr("dashed = live regions resolved from tracked objects"))
         legend.setObjectName("muted")
         left.addWidget(legend)
         outer.addLayout(left, 3)
@@ -65,8 +66,8 @@ class ROIPage:
         self.list = QListWidget(); self.list.setMinimumHeight(150)
         lst.layout_.addWidget(self.list)
         row = QHBoxLayout()
-        self.btn_dup = QPushButton("Duplicate"); self.btn_del = QPushButton("Delete"); self.btn_del.setObjectName("danger")
-        self.btn_up = QPushButton("▲"); self.btn_down = QPushButton("▼")
+        self.btn_dup = QPushButton(tr("Duplicate")); self.btn_del = QPushButton(tr("Delete")); self.btn_del.setObjectName("danger")
+        self.btn_up = QPushButton(tr("▲")); self.btn_down = QPushButton(tr("▼"))
         for b in (self.btn_up, self.btn_down, self.btn_dup, self.btn_del):
             row.addWidget(b)
         lst.layout_.addLayout(row)
@@ -77,50 +78,50 @@ class ROIPage:
         self.name = QLineEdit()
         self.mode = QComboBox()
         for m in MODES:
-            self.mode.addItem(MODE_LABELS[m], m)
-        self.enabled = QCheckBox("Enabled")
+            self.mode.addItem(tr(MODE_LABELS[m]), m)
+        self.enabled = QCheckBox(tr("Enabled"))
         self.priority = QSpinBox(); self.priority.setRange(-999, 999)
         self.shape = QLabel()
-        f.addRow("Name", self.name)
-        f.addRow("Mode", self.mode)
-        f.addRow("", self.enabled)
-        f.addRow("Priority", self.priority)
-        f.addRow("Shape", self.shape)
+        f.addRow(tr("Name"), self.name)
+        f.addRow(tr("Mode"), self.mode)
+        f.addRow(tr(""), self.enabled)
+        f.addRow(tr("Priority"), self.priority)
+        f.addRow(tr("Shape"), self.shape)
         props.layout_.addLayout(f)
         # geometry (manual coordinate entry, frame pixels)
         self.geo_rect = QWidget(); gr = QFormLayout(self.geo_rect); gr.setContentsMargins(0, 0, 0, 0)
         self.x = QDoubleSpinBox(); self.y = QDoubleSpinBox(); self.w = QDoubleSpinBox(); self.h = QDoubleSpinBox()
         for sp in (self.x, self.y, self.w, self.h):
-            sp.setRange(-10000, 10000); sp.setDecimals(1); sp.setSuffix(" px")
-        self.rot = QDoubleSpinBox(); self.rot.setRange(-180, 180); self.rot.setDecimals(1); self.rot.setSuffix("°")
+            sp.setRange(-10000, 10000); sp.setDecimals(1); sp.setSuffix(tr(" px"))
+        self.rot = QDoubleSpinBox(); self.rot.setRange(-180, 180); self.rot.setDecimals(1); self.rot.setSuffix(tr("°"))
         r1 = QHBoxLayout(); r1.addWidget(self.x); r1.addWidget(self.y)
         r2 = QHBoxLayout(); r2.addWidget(self.w); r2.addWidget(self.h)
-        gr.addRow("Left, top", r1); gr.addRow("Width, height", r2); gr.addRow("Rotation", self.rot)
+        gr.addRow(tr("Left, top"), r1); gr.addRow(tr("Width, height"), r2); gr.addRow(tr("Rotation"), self.rot)
         self.geo_poly = QWidget(); gp = QVBoxLayout(self.geo_poly); gp.setContentsMargins(0, 0, 0, 0)
-        gp.addWidget(QLabel("Vertices (x, y px; one per line)"))
+        gp.addWidget(QLabel(tr("Vertices (x, y px; one per line)")))
         self.pts = QPlainTextEdit(); self.pts.setMaximumHeight(110)
-        self.pts_apply = QPushButton("Apply vertices")
+        self.pts_apply = QPushButton(tr("Apply vertices"))
         gp.addWidget(self.pts); gp.addWidget(self.pts_apply)
         props.layout_.addWidget(self.geo_rect); props.layout_.addWidget(self.geo_poly)
         right.addWidget(props)
 
         ai = Card("AI selection (Automatic / Hybrid)")
         fa = QFormLayout()
-        self.classes = QLineEdit(); self.classes.setPlaceholderText("any class (e.g. person, car)")
-        self.classes.setToolTip("Comma-separated detector classes; empty means any class")
-        self.excl = QLineEdit(); self.excl.setPlaceholderText("none")
+        self.classes = QLineEdit(); self.classes.setPlaceholderText(tr("any class (e.g. person, car)"))
+        self.classes.setToolTip(tr("Comma-separated detector classes; empty means any class"))
+        self.excl = QLineEdit(); self.excl.setPlaceholderText(tr("none"))
         self.minconf = QDoubleSpinBox(); self.minconf.setRange(0, 1); self.minconf.setSingleStep(0.05)
-        self.inclusion = QComboBox(); self.inclusion.addItem("Centre inside area", "center")
-        self.inclusion.addItem("Overlap ≥ threshold", "overlap")
+        self.inclusion = QComboBox(); self.inclusion.addItem(tr("Centre inside area"), "center")
+        self.inclusion.addItem(tr("Overlap ≥ threshold"), "overlap")
         self.overlap = QDoubleSpinBox(); self.overlap.setRange(0.05, 1); self.overlap.setSingleStep(0.05)
-        self.maxobj = QSpinBox(); self.maxobj.setRange(0, 100); self.maxobj.setSpecialValueText("unlimited")
-        self.padding = QSpinBox(); self.padding.setRange(0, 200); self.padding.setSuffix(" %")
-        self.clip = QCheckBox("Clip regions to the area")
-        self.coast = QCheckBox("Keep while object is briefly lost")
-        fa.addRow("Classes", self.classes); fa.addRow("Exclude", self.excl); fa.addRow("Min confidence", self.minconf)
-        fa.addRow("Inside rule", self.inclusion); fa.addRow("Overlap", self.overlap)
-        fa.addRow("Max objects", self.maxobj); fa.addRow("Padding", self.padding)
-        fa.addRow("", self.clip); fa.addRow("", self.coast)
+        self.maxobj = QSpinBox(); self.maxobj.setRange(0, 100); self.maxobj.setSpecialValueText(tr("unlimited"))
+        self.padding = QSpinBox(); self.padding.setRange(0, 200); self.padding.setSuffix(tr(" %"))
+        self.clip = QCheckBox(tr("Clip regions to the area"))
+        self.coast = QCheckBox(tr("Keep while object is briefly lost"))
+        fa.addRow(tr("Classes"), self.classes); fa.addRow(tr("Exclude"), self.excl); fa.addRow(tr("Min confidence"), self.minconf)
+        fa.addRow(tr("Inside rule"), self.inclusion); fa.addRow(tr("Overlap"), self.overlap)
+        fa.addRow(tr("Max objects"), self.maxobj); fa.addRow(tr("Padding"), self.padding)
+        fa.addRow(tr(""), self.clip); fa.addRow(tr(""), self.coast)
         ai.layout_.addLayout(fa)
         self.warn = QLabel(); self.warn.setWordWrap(True); self.warn.setStyleSheet("color: #d29922;")
         ai.layout_.addWidget(self.warn)
@@ -194,7 +195,7 @@ class ROIPage:
         self.list.clear()
         sel_row = -1
         for i, r in enumerate(self._ordered()):
-            it = QListWidgetItem(f"{r.name}   [{r.mode}, {r.kind if r.mode != 'auto' else 'objects'}]")
+            it = QListWidgetItem(f"{r.name}   [{tr(r.mode)}, {tr(r.kind if r.mode != 'auto' else 'objects')}]")
             it.setData(Qt.UserRole, r.id)
             it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
             it.setCheckState(Qt.Checked if r.enabled else Qt.Unchecked)
@@ -278,9 +279,9 @@ class ROIPage:
 
     def _set_tool(self, tool: str) -> None:
         self.canvas.set_tool(tool)
-        self.hint.setText({"select": "Drag to move · handles resize/rotate · Delete removes · arrows nudge",
-                           "rect": "Drag on the video to draw a rectangle",
-                           "polygon": "Click to add points · double-click/Enter closes · Esc cancels"}[tool])
+        self.hint.setText(tr({"select": "Drag to move · handles resize/rotate · Delete removes · arrows nudge",
+                              "rect": "Drag on the video to draw a rectangle",
+                              "polygon": "Click to add points · double-click/Enter closes · Esc cancels"}[tool]))
 
     # ---------------------------------------------------------------- properties
     def _show_props(self) -> None:
@@ -298,8 +299,8 @@ class ROIPage:
             self.mode.setCurrentIndex(self.mode.findData(r.mode))
             self.enabled.setChecked(r.enabled)
             self.priority.setValue(r.priority)
-            self.shape.setText("tracked object boxes" if r.mode == "auto" else
-                               ("rectangle" if r.kind == "rect" else f"polygon ({len(r.points)} points)"))
+            self.shape.setText(tr("tracked object boxes") if r.mode == "auto" else
+                               (tr("rectangle") if r.kind == "rect" else tr("polygon ({n} points)", n=len(r.points))))
             self.x.setValue((r.cx - r.w / 2) * fw); self.y.setValue((r.cy - r.h / 2) * fh)
             self.w.setValue(r.w * fw); self.h.setValue(r.h * fh); self.rot.setValue(r.rotation)
             self.pts.setPlainText("\n".join(f"{x * fw:.1f}, {y * fh:.1f}" for x, y in r.points))
@@ -310,7 +311,7 @@ class ROIPage:
             self.maxobj.setValue(r.max_objects); self.padding.setValue(int(round(r.padding * 100)))
             self.clip.setChecked(r.clip_to_area); self.coast.setChecked(r.include_coasting)
         else:
-            self.shape.setText("")
+            self.shape.setText(tr(""))
         for w in widgets:
             w.blockSignals(False)
         geo = r is not None and r.mode != "auto"
@@ -376,7 +377,7 @@ class ROIPage:
             r.validate()
         except (ValueError, ROIError) as e:
             r.points = old if "old" in locals() else r.points
-            self.warn.setText(f"Vertices not applied: {e}")
+            self.warn.setText(tr("Vertices not applied: {e}", e=e))
             return
         self._commit()
 
@@ -392,9 +393,9 @@ class ROIPage:
             known = set(self.ctx.models.available().get("yolo11n").classes) | {"face"} if self.ctx.models.available().get("yolo11n") else set()
             for c in r.classes:
                 if known and c not in known:
-                    msgs.append(f"'{c}' is not a class of the detector.")
+                    msgs.append(tr("'{c}' is not a class of the detector.", c=tr(c)))
                 elif (inc and c not in inc) or c in exc:
-                    msgs.append(f"'{c}' is filtered out on the Detection page.")
+                    msgs.append(tr("'{c}' is filtered out on the Detection page.", c=tr(c)))
                 elif c == "face" and body["ai"].get("face_detection") != "vision":
                     msgs.append("Face regions need Apple Vision face detection (AI Engine page).")
         self.warn.setText(" ".join(msgs))
@@ -413,5 +414,5 @@ class ROIPage:
         tracked = self.ctx.ai.tracked_at(t)
         self.canvas.regions = self.ctx.rois.resolve(tracked, *self.canvas.frame_size) if tracked else []
         n_obj = sum(1 for r in self.canvas.regions if r.is_object)
-        self.canvas.overlay = f"{n_obj} live object region(s)" if n_obj else ""
+        self.canvas.overlay = tr("{n} live object region(s)", n=n_obj) if n_obj else ""
         self.canvas.update()

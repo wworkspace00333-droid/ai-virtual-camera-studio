@@ -22,6 +22,8 @@ printf '#pragma once\n#define OBS_RELEASE_CANDIDATE 0\n#define OBS_BETA 0\n' > "
 OUT="$ROOT/build/obs-plugin/vcstudio-obs.plugin"
 rm -rf "$OUT"; mkdir -p "$OUT/Contents/MacOS"
 SDK="${VCS_SDK:-$(ls -d /Library/Developer/CommandLineTools/SDKs/MacOSX26.*.sdk 2>/dev/null | tail -1)}"
+# fall back to whatever SDK the selected toolchain provides (other Macs may not have the 26.x SDK)
+[[ -n "$SDK" ]] || SDK="$(xcrun --sdk macosx --show-sdk-path)"
 clang -isysroot "$SDK" -arch arm64 -mmacosx-version-min=13.0 -O2 -Wall -Wno-unused-parameter -std=c11 -bundle \
   -I"$GEN" -I"$SIMDE_INC" -I"$SDK_DIR/libobs" -I"$SDK_DIR/frontend/api" -I"$ROOT/native/obs-plugin" \
   -F"$OBS_APP/Contents/Frameworks" -framework libobs \

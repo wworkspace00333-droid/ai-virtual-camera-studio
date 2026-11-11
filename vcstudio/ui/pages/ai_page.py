@@ -13,6 +13,7 @@ from vcstudio.ai.model_manager import COMPUTE_UNITS, ModelManager
 from vcstudio.core.frame import Frame
 from vcstudio.core.system_info import coreml_info, metal_info
 from vcstudio.ui.widgets import Card, StatCard, page_scaffold
+from vcstudio.i18n import tr
 
 log = logging.getLogger(__name__)
 BENCH_ITERS = 40
@@ -73,39 +74,39 @@ class AIEnginePage:
 
         cfg = Card("Configuration (active profile)")
         f = QFormLayout()
-        self.enabled = QCheckBox("Enable AI detection")
+        self.enabled = QCheckBox(tr("Enable AI detection"))
         self.model = QComboBox()
         self.cu = QComboBox()
         for k, v in COMPUTE_UNITS.items():
-            self.cu.addItem(v, k)
-        self.face = QCheckBox("Apple Vision face detection (face rectangles only; no identity recognition)")
-        f.addRow("", self.enabled)
-        f.addRow("Detector model", self.model)
-        f.addRow("Compute units", self.cu)
-        f.addRow("", self.face)
+            self.cu.addItem(tr(v), k)
+        self.face = QCheckBox(tr("Apple Vision face detection (face rectangles only; no identity recognition)"))
+        f.addRow(tr(""), self.enabled)
+        f.addRow(tr("Detector model"), self.model)
+        f.addRow(tr("Compute units"), self.cu)
+        f.addRow(tr(""), self.face)
         cfg.layout_.addLayout(f)
         lay.addWidget(cfg)
 
         models = Card("Installed models")
         self.models = QTableWidget(0, 5)
-        self.models.setHorizontalHeaderLabels(["Model", "Size", "Classes", "Source", "License"])
+        self.models.setHorizontalHeaderLabels([tr("Model"), tr("Size"), tr("Classes"), tr("Source"), tr("License")])
         self.models.horizontalHeader().setStretchLastSection(True)
         self.models.setMinimumHeight(110)
         models.layout_.addWidget(self.models)
-        hint = QLabel("Add models with: .venv-convert/bin/python scripts/convert_models.py <name>")
+        hint = QLabel(tr("Add models with: .venv-convert/bin/python scripts/convert_models.py <name>"))
         hint.setObjectName("muted")
         models.layout_.addWidget(hint)
         lay.addWidget(models)
 
         bench = Card("Benchmark (this Mac)")
         row = QHBoxLayout()
-        self.bench_btn = QPushButton("Run benchmark")
-        self.bench_info = QLabel("Uses the current input frame, or a built-in sample image when not capturing.")
+        self.bench_btn = QPushButton(tr("Run benchmark"))
+        self.bench_info = QLabel(tr("Uses the current input frame, or a built-in sample image when not capturing."))
         self.bench_info.setObjectName("muted")
         row.addWidget(self.bench_btn); row.addWidget(self.bench_info); row.addStretch()
         bench.layout_.addLayout(row)
         self.bench = QTableWidget(0, 7)
-        self.bench.setHorizontalHeaderLabels(["Model", "Compute units", "Median ms", "p95 ms", "Max FPS", "Load s", "Frame"])
+        self.bench.setHorizontalHeaderLabels([tr("Model"), tr("Compute units"), tr("Median ms"), tr("p95 ms"), tr("Max FPS"), tr("Load s"), tr("Frame")])
         self.bench.horizontalHeader().setStretchLastSection(True)
         self.bench.setMinimumHeight(220)
         bench.layout_.addWidget(self.bench)
@@ -130,8 +131,9 @@ class AIEnginePage:
 
     def _env_text(self) -> str:
         m, c = metal_info(), coreml_info()
-        return (f"Metal: {m.get('name', 'unavailable')} · GPU working set {m.get('recommended_working_set_gb', '?')} GB · "
-                f"Core ML: {'available' if c.get('available') else 'unavailable'}")
+        return tr("Metal: {name} · GPU working set {gb} GB · Core ML: {coreml}", name=m.get('name', tr('unavailable')),
+                  gb=m.get('recommended_working_set_gb', '?'),
+                  coreml=tr('available') if c.get('available') else tr('unavailable'))
 
     def _load_from_profile(self):
         body = self.ctx.profiles.active()["body"]
@@ -141,7 +143,7 @@ class AIEnginePage:
         self.enabled.setChecked(ai.get("enabled", True))
         self.face.setChecked(ai.get("face_detection") == "vision")
         self.model.clear()
-        self.model.addItem("Auto (smallest; largest in Maximum Quality mode)", "auto")
+        self.model.addItem(tr("Auto (smallest; largest in Maximum Quality mode)"), "auto")
         avail = self.ctx.models.available()
         for name, info in avail.items():
             if info.task == "detect":
@@ -153,7 +155,7 @@ class AIEnginePage:
             w.blockSignals(False)
         self.models.setRowCount(len(avail))
         for i, (name, info) in enumerate(avail.items()):
-            for j, v in enumerate((name, f"{info.size_mb} MB", str(len(info.classes)), info.source, info.license)):
+            for j, v in enumerate((name, f"{info.size_mb} " + tr("MB"), str(len(info.classes)), tr(info.source), info.license)):
                 self.models.setItem(i, j, QTableWidgetItem(v))
         self.models.resizeColumnsToContents()
 
@@ -169,21 +171,22 @@ class AIEnginePage:
         s = self.ctx.ai.stats()
         level = {"running": "ok", "degraded": "warn", "error": "error", "loading": "warn"}.get(s.state, "idle")
         self.cards["State"].set(s.state.title(), "starts with capture" if s.state == "stopped" else "", level)
-        self.cards["Model"].set(s.model or "—", (s.quality_note or COMPUTE_UNITS.get(s.compute_units, "")) +
-                                (f" · loaded in {s.model_load_s:.2f} s" if s.model_load_s else ""))
-        tgt = "max sustainable" if s.target_fps is None else f"target {s.target_fps:g} fps"
+        self.cards["Model"].set(s.model or "—", tr(s.quality_note or COMPUTE_UNITS.get(s.compute_units, "")) +
+                                (" · " + tr("loaded in {s} s", s=f"{s.model_load_s:.2f}") if s.model_load_s else ""))
+        tgt = tr("max sustainable") if s.target_fps is None else tr("target {fps} fps", fps=f"{s.target_fps:g}")
         live = s.state == "running"
         self.cards["Inference rate"].set(f"{s.achieved_fps:.1f} fps" if live else "—", tgt,
                                          "ok" if live and (s.target_fps is None or s.achieved_fps >= 0.85 * s.target_fps) else None)
-        self.cards["Inference time"].set(f"{s.inference_ms_avg:.1f} ms" if s.inferences else "—",
-                                         f"p95 {s.inference_ms_p95:.1f} ms" if s.inferences else "")
-        self.cards["Capture → result"].set(f"{s.frame_age_ms:.1f} ms" if s.inferences else "—", "frame arrival to detections")
-        self.cards["Detections"].set(str(s.detections) if live else "—", f"{s.inferences:,} inferences")
-        self.cards["Face detection"].set(f"{s.face_ms_avg:.1f} ms" if s.face_ms_avg else ("on" if self.face.isChecked() else "off"),
+        self.cards["Inference time"].set(f"{s.inference_ms_avg:.1f} " + tr("ms") if s.inferences else "—",
+                                         f"p95 {s.inference_ms_p95:.1f} " + tr("ms") if s.inferences else "")
+        self.cards["Capture → result"].set(f"{s.frame_age_ms:.1f} " + tr("ms") if s.inferences else "—", "frame arrival to detections")
+        self.cards["Detections"].set(str(s.detections) if live else "—", tr("{n} inferences", n=f"{s.inferences:,}"))
+        self.cards["Face detection"].set(f"{s.face_ms_avg:.1f} " + tr("ms") if s.face_ms_avg else ("on" if self.face.isChecked() else "off"),
                                          "Apple Vision")
         self.cards["Tracked objects"].set(str(s.tracks_active) if live and s.tracking else ("off" if not s.tracking else "—"),
-                                          f"{s.track_ids_created} IDs · {s.tracks_recovered} recovered · {s.tracker_ms:.2f} ms")
-        self.cards["Errors"].set(str(s.errors), f"{s.consecutive_errors} consecutive", "error" if s.consecutive_errors else None)
+                                          tr("{ids} IDs · {rec} recovered · {ms} ms", ids=s.track_ids_created,
+                                             rec=s.tracks_recovered, ms=f"{s.tracker_ms:.2f}"))
+        self.cards["Errors"].set(str(s.errors), tr("{n} consecutive", n=s.consecutive_errors), "error" if s.consecutive_errors else None)
         self.err.setText(s.last_error if s.state in ("error", "degraded") else "")
 
     # ---------------- benchmark
@@ -202,7 +205,8 @@ class AIEnginePage:
         self.bench_btn.setEnabled(False)
         self.bench.setRowCount(0)
         frame = self._bench_frame()
-        self.bench_info.setText(f"Running on {frame.source} ({frame.width}×{frame.height}), {BENCH_ITERS} iterations each…")
+        self.bench_info.setText(tr("Running on {src} ({w}×{h}), {n} iterations each…", src=frame.source, w=frame.width,
+                                   h=frame.height, n=BENCH_ITERS))
 
         def work():
             try:
@@ -211,10 +215,10 @@ class AIEnginePage:
                 env = inspect_environment()
                 hw = {k: env[k] for k in ("cpu", "memory_gb", "macos")}
                 self.ctx.db.add_benchmark("detector_latency", hw, {"rows": rows, "ai_running": self.ctx.ai.running})
-                self._sig.done.emit(f"Done: {len(rows)} configurations, saved to the benchmark history.")
+                self._sig.done.emit(tr("Done: {n} configurations, saved to the benchmark history.", n=len(rows)))
             except Exception as e:
                 log.exception("benchmark failed")
-                self._sig.done.emit(f"Benchmark failed: {e}")
+                self._sig.done.emit(tr("Benchmark failed: {e}", e=e))
         threading.Thread(target=work, name="ai-benchmark", daemon=True).start()
 
     def _bench_row(self, row):

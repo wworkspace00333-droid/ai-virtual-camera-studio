@@ -12,6 +12,7 @@ import numpy as np
 from PySide6.QtGui import QColor, QFont, QImage, QPainter, QPen
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
+from vcstudio.i18n import tr
 from vcstudio.ui import theme
 
 log = logging.getLogger(__name__)
@@ -22,9 +23,9 @@ class VideoView(QWidget):
 
     def __init__(self, title: str = ""):
         super().__init__()
-        self.title = title
+        self.title = tr(title)
         self.image: QImage | None = None
-        self.overlay = "No signal"
+        self.overlay = tr("No signal")
         self.overlay_level = "idle"
         self.boxes: list[tuple[float, float, float, float, str]] = []   # normalized x0,y0,x1,y1, caption
         self.setMinimumSize(320, 180)
@@ -39,6 +40,7 @@ class VideoView(QWidget):
         self.update()
 
     def set_overlay(self, text: str, level: str = "idle") -> None:
+        text = tr(text)
         if (text, level) != (self.overlay, self.overlay_level):
             self.overlay, self.overlay_level = text, level
             self.update()
@@ -212,12 +214,12 @@ class PreviewFeeder(QObject):
         if self.ai is not None and self.show_detections and frame is not None:
             if self.ai.tracker_config().enabled:
                 for o in self.ai.tracked_at(frame.pts):
-                    tag = f"#{o.track_id} {o.label} {o.confidence:.2f}" + (" ⋯" if o.state == "coasting" else "")
+                    tag = f"#{o.track_id} {tr(o.label)} {o.confidence:.2f}" + (" ⋯" if o.state == "coasting" else "")
                     boxes.append((*o.normalized(frame.width, frame.height), tag))
             else:
                 res = self.ai.results.peek()[0]
                 if res is not None:
-                    boxes = [(*d.normalized(res.width, res.height), f"{d.label} {d.confidence:.2f}")
+                    boxes = [(*d.normalized(res.width, res.height), f"{tr(d.label)} {d.confidence:.2f}")
                              for d in res.detections]
         for v in views:
             if boxes or v.boxes:

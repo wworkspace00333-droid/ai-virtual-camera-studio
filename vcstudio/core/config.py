@@ -91,6 +91,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "show_preview": True,
         "preview_max_fps": 30,
         "global_hotkeys": True,
+        "language": "auto",          # auto (macOS preferred language) | en | ru; applied at next start
     },
     "processing": {"compositor": "auto"},     # auto (Metal if available) | metal | cpu
     "hotkeys": dict(DEFAULT_HOTKEYS),
@@ -104,6 +105,7 @@ _ALLOWED = {
     ("performance", "memory_limits"): {"auto", "manual"},
     ("logging", "level"): {"DEBUG", "INFO", "WARNING", "ERROR"},
     ("processing", "compositor"): {"auto", "metal", "cpu"},
+    ("ui", "language"): {"auto", "en", "ru"},
 }
 _RANGES = {
     ("input", "preferred_fps"): (1, 240),

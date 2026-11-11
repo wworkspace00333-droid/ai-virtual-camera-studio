@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QHBoxLayout, QLabel, QListWidget, QMainWindow, QSt
 
 from vcstudio import APP_NAME, __version__
 from vcstudio.core.profiles import ProfileError
+from vcstudio.i18n import tr
 from vcstudio.ui.actions import ActionRegistry
 from vcstudio.ui.pages.dashboard import DashboardPage
 from vcstudio.ui.pages.logs import LogsPage
@@ -56,7 +57,7 @@ class MainWindow(QMainWindow):
         self.nav.setFixedWidth(210)
         self.stack = QStackedWidget()
         for i, p in enumerate(self.pages, 1):
-            self.nav.addItem(f"{i:>2}   {p.title}")
+            self.nav.addItem(f"{i:>2}   {tr(p.title)}")
             self.stack.addWidget(p.widget)
         self.nav.currentRowChanged.connect(self._goto)
         h.addWidget(self.nav)
@@ -65,7 +66,7 @@ class MainWindow(QMainWindow):
 
         self.status_profile = QLabel()
         self.status_res = QLabel()
-        self.status_capture = QLabel("Capture: stopped")
+        self.status_capture = QLabel(tr("Capture: {state}", state=tr("stopped")))
         self.statusBar().addWidget(self.status_capture)
         self.statusBar().addPermanentWidget(self.status_res)
         self.statusBar().addPermanentWidget(self.status_profile)
@@ -112,7 +113,7 @@ class MainWindow(QMainWindow):
             self.ctx.start_capture()
             return True
         except RuntimeError as e:
-            QMessageBox.warning(self, "Cannot start", str(e))
+            QMessageBox.warning(self, tr("Cannot start"), tr(str(e)))
             return False
 
     def page_keys(self) -> list[str]:
@@ -130,7 +131,7 @@ class MainWindow(QMainWindow):
             self.logs.refresh_events()
 
     def _profile_changed(self) -> None:
-        self.status_profile.setText(f"Profile: {self.ctx.profiles.active_name}")
+        self.status_profile.setText(tr("Profile: {name}", name=self.ctx.profiles.active_name))
         self.dashboard.refresh_profile()
         self.performance.sync_mode()
 
@@ -141,14 +142,16 @@ class MainWindow(QMainWindow):
         self.dashboard.on_pipeline(ps)
         self.performance.on_pipeline(ps, self.ctx.ai.stats(), self.ctx.watchdog.stats)
         self.dashboard.on_ai(self.ctx.ai.stats())
-        self.status_capture.setText(f"Capture: {cs.state.replace('_', ' ')}"
+        self.status_capture.setText(tr("Capture: {state}", state=tr(cs.state.replace('_', ' ')))
                                     + (f" · {cs.measured_fps:.0f} fps" if cs.state in ("running", "frozen") else "")
-                                    + (f"   |   Output: {ps.state} · {ps.output_fps:.0f} fps · camera {ps.camera_state.replace('_', ' ')}"
+                                    + ("   |   " + tr("Output: {state} · {fps} fps · camera {camera}", state=tr(ps.state),
+                                                       fps=f"{ps.output_fps:.0f}",
+                                                       camera=tr(ps.camera_state.replace('_', ' ')))
                                        if ps.state != "stopped" else ""))
         s = self.ctx.monitor.sample()
         self.dashboard.on_sample(s)
         self.performance.on_sample(s)
-        self.status_res.setText(f"CPU {s.cpu_percent:.0f}% · App {s.process_rss / 2**20:.0f} MB")
+        self.status_res.setText(tr("CPU {cpu}% · App {mb} MB", cpu=f"{s.cpu_percent:.0f}", mb=f"{s.process_rss / 2**20:.0f}"))
         self._slow += 1
         if self._slow % 30 == 0:
             self.dashboard.refresh_extension()

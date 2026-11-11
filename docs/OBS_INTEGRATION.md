@@ -53,6 +53,32 @@ The plugin hands OBS's final program output to the app through shared memory. OB
 - The plugin is built against the headers of the **installed OBS version** (fetched automatically). Rebuild it after updating OBS.
 - Maximum shared resolution is 3840×2160. After changing OBS's output resolution, toggle sharing off and on.
 
+## Output through OBS Virtual Camera (no Apple Developer account)
+
+Installing the app's own **AI Virtual Camera** needs a paid Apple Developer team (see [CAMERA_SETUP.md](CAMERA_SETUP.md)).
+Without one, the app can send its processed video into **OBS Virtual Camera** instead. OBS's camera extension is
+already signed and approved on Macs that run OBS, and it accepts frames through the same sink mechanism.
+
+```
+OBS Studio ──(vcstudio-obs plugin)──► AI Virtual Camera Studio ──► OBS Virtual Camera ──► Zoom / Meet / FaceTime / QuickTime
+```
+
+1. Install the vcstudio-obs plugin (above), restart OBS and enable **Tools > AI Virtual Camera Studio: share frames**.
+2. In the app, **Virtual Camera > Send processed video to > OBS Virtual Camera (no Apple Developer account needed)**.
+   If the input was OBS Virtual Camera, the app switches it to *Direct OBS frame transfer* automatically (the same
+   camera can't be input and output).
+3. **Preview > Start.** In the receiving app, select **OBS Virtual Camera**.
+4. Don't click **Start Virtual Camera** in OBS while the app feeds it: both would write to the same camera.
+
+Measured on a MacBook Pro M2 Pro (2026-11-12), OBS at 1080p30, `--pipeline-e2e-test … --input obs`: client received
+30.1 distinct fps at 1920×1080, the replacement was visible in 100% of frames, 0 render errors, pipeline latency
+3.3 ms (p95 4.5 ms). Loopback into the OBS camera alone: 351 of 352 frames, 6.0 ms median / 15.6 ms p95.
+
+```bash
+open -W -n "build/AI Virtual Camera Studio Dev.app" --args --pipeline-e2e-test /tmp/obs-e2e.json --seconds 10 \
+  --device "OBS Virtual Camera" --sink "OBS Camera Extension Stream Sink" --input obs
+```
+
 ## Performance tips
 
 - Keep OBS's own GPU load reasonable (fewer filters and scenes). The app's AI and compositing share the GPU and Neural Engine.

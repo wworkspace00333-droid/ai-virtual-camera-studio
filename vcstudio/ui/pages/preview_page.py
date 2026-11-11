@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton
 
 from vcstudio.ui.video_view import STATE_OVERLAY, VideoView, frame_to_qimage
 from vcstudio.ui.widgets import page_scaffold
+from vcstudio.i18n import tr
 
 
 class PreviewPage:
@@ -17,13 +18,13 @@ class PreviewPage:
         self.widget, lay = page_scaffold("Preview", "Left: the captured input. Right: exactly what the virtual camera "
                                          "receives. Both previews show the same frame.")
         bar = QHBoxLayout()
-        self.start_btn = QPushButton("Start"); self.start_btn.setObjectName("primary")
-        self.stop_btn = QPushButton("Stop")
-        self.pause_btn = QPushButton("Pause output"); self.pause_btn.setCheckable(True)
-        self.pass_btn = QPushButton("Emergency passthrough"); self.pass_btn.setObjectName("danger"); self.pass_btn.setCheckable(True)
-        self.repl_btn = QPushButton("Replacement on"); self.repl_btn.setCheckable(True); self.repl_btn.setChecked(True)
-        self.boxes = QCheckBox("Show detections"); self.boxes.setChecked(True)
-        src_btn = QPushButton("Input settings…")
+        self.start_btn = QPushButton(tr("Start")); self.start_btn.setObjectName("primary")
+        self.stop_btn = QPushButton(tr("Stop"))
+        self.pause_btn = QPushButton(tr("Pause output")); self.pause_btn.setCheckable(True)
+        self.pass_btn = QPushButton(tr("Emergency passthrough")); self.pass_btn.setObjectName("danger"); self.pass_btn.setCheckable(True)
+        self.repl_btn = QPushButton(tr("Replacement on")); self.repl_btn.setCheckable(True); self.repl_btn.setChecked(True)
+        self.boxes = QCheckBox(tr("Show detections")); self.boxes.setChecked(True)
+        src_btn = QPushButton(tr("Input settings…"))
         for b in (self.start_btn, self.stop_btn, self.pause_btn, self.pass_btn, self.repl_btn, self.boxes):
             bar.addWidget(b)
         bar.addStretch()
@@ -60,7 +61,7 @@ class PreviewPage:
         for b, v in ((self.pause_btn, p.paused), (self.pass_btn, p.passthrough), (self.repl_btn, p.replacement_enabled)):
             if b.isChecked() != v:
                 b.blockSignals(True); b.setChecked(v); b.blockSignals(False)
-        self.repl_btn.setText("Replacement on" if p.replacement_enabled else "Replacement off")
+        self.repl_btn.setText(tr("Replacement on") if p.replacement_enabled else tr("Replacement off"))
 
     def tick(self):
         cs = self.ctx.capture.stats()
@@ -75,8 +76,8 @@ class PreviewPage:
             for v in (self.original, self.processed):
                 v.set_image(None); v.set_boxes([])
             self.processed.set_overlay("Not running", "idle")
-            self.info.setText(cs.state.replace("_", " "))
-            self.stats.setText("")
+            self.info.setText(tr(cs.state.replace("_", " ")))
+            self.stats.setText(tr(""))
             return
         if not self.widget.isVisible():
             return
@@ -90,17 +91,22 @@ class PreviewPage:
             self.original.set_image(frame_to_qimage(src, maxw))
             self.processed.set_image(frame_to_qimage(out, maxw))
         except Exception as e:
-            self.stats.setText(f"Preview conversion failed: {e}")
+            self.stats.setText(tr("Preview conversion failed: {e}", e=e))
             return
         self.feeder._update_boxes_for([self.original], src)
         p = self.ctx.pipeline.stats()
         po = {"paused": ("PAUSED: clients see a frozen frame", "warn"),
-              "passthrough": (f"PASSTHROUGH ({p.passthrough_reason})", "error")}.get(p.state, ("", "ok"))
+              "passthrough": (tr("PASSTHROUGH ({reason})", reason=tr(p.passthrough_reason)), "error")}.get(p.state, ("", "ok"))
         self.processed.set_overlay(*po)
-        self.info.setText(f"{cs.source_name} · {cs.width}×{cs.height} · in {cs.measured_fps:.0f} fps · out {p.output_fps:.0f} fps")
-        cam = {"connected": f"camera connected (sent {p.camera_sent}, dropped {p.camera_dropped})",
-               "not_installed": "camera not installed: output visible here only",
-               "disabled": "camera output disabled", "error": f"camera error: {p.camera_error}"}.get(p.camera_state, p.camera_state)
-        self.stats.setText(f"Pipeline {p.state} · latency {p.latency_ms:.1f} ms (p95 {p.latency_ms_p95:.1f}) · "
-                           f"processing {p.process_ms:.1f} ms ({p.backend.upper() or '—'} render {p.render_ms:.1f} ms, "
-                           f"GPU {p.gpu_ms:.2f} ms) · {p.regions} region(s) · skipped inputs {p.inputs_skipped} · {cam}")
+        self.info.setText(f"{cs.source_name} · {cs.width}×{cs.height} · " +
+                          tr("in {a} fps · out {b} fps", a=f"{cs.measured_fps:.0f}", b=f"{p.output_fps:.0f}"))
+        cam = {"connected": tr("camera {name} connected (sent {s}, dropped {d})", name=p.camera_device,
+                               s=p.camera_sent, d=p.camera_dropped),
+               "not_installed": tr("camera {name} not available: output visible here only", name=p.camera_device),
+               "disabled": tr("camera output disabled"),
+               "error": tr("camera error: {e}", e=p.camera_error)}.get(p.camera_state, p.camera_state)
+        self.stats.setText(tr("Pipeline {state} · latency {lat} ms (p95 {p95}) · processing {proc} ms ({backend} render "
+                              "{render} ms, GPU {gpu} ms) · {regions} region(s) · skipped inputs {skipped}",
+                              state=tr(p.state), lat=f"{p.latency_ms:.1f}", p95=f"{p.latency_ms_p95:.1f}",
+                              proc=f"{p.process_ms:.1f}", backend=p.backend.upper() or "—", render=f"{p.render_ms:.1f}",
+                              gpu=f"{p.gpu_ms:.2f}", regions=p.regions, skipped=p.inputs_skipped) + f" · {cam}")

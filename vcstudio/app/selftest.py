@@ -230,7 +230,20 @@ def pipeline_e2e_selftest(out_path: str, seconds: float = 8.0, out_device: str =
         ctx.update_active_profile(lambda b: (b.__setitem__("assets", [a.to_dict()]), b.__setitem__("rois", [people.to_dict()]),
                                             b["detection"].__setitem__("frequency_mode", "fixed"),
                                             b["detection"].__setitem__("fixed_fps", 20)))
-        if in_device:
+        obs_in = in_device == "obs"
+        if obs_in:
+            # real OBS content through the vcstudio-obs plugin; the scene is unknown, so a fixed manual region
+            # filled with an opaque magenta image is what the client checks (top-left 5%..25% of the frame)
+            from vcstudio.roi.model import new_rect
+            mp = Path(os.environ["VCSTUDIO_HOME"]) / "magenta.png"
+            cv2.imwrite(str(mp), np.full((8, 8, 4), (255, 0, 255, 255), np.uint8))
+            ma = ctx.assets.import_file(mp)
+            marker = new_rect("Marker", 0.05, 0.05, 0.25, 0.25)
+            marker.replacement = ReplacementSpec(enabled=True, asset_id=ma.id, fit="stretch").to_dict()
+            ctx.update_active_profile(lambda b: (b.__setitem__("assets", b["assets"] + [ma.to_dict()]),
+                                                b.__setitem__("rois", b["rois"] + [marker.to_dict()])))
+            ctx.settings.set("input.method", "obs_ipc")
+        elif in_device:
             ctx.settings.set("input.method", "avfoundation"); ctx.settings.set("input.device_name_hint", in_device)
             ctx.settings.set("input.device_unique_id", None)
         else:
@@ -253,13 +266,18 @@ def pipeline_e2e_selftest(out_path: str, seconds: float = 8.0, out_device: str =
                 with f.bgra() as img:
                     row = img[H - 30, :, :3].astype(int).mean(axis=1)
                     idx = sum(1 << b for b in range(BITS) if row[int((b + 0.5) * cell)] > 127)
-                    person = img[620:860, 650:800, :3].reshape(-1, 3).astype(int)      # left person's torso (bus scene)
+                    if obs_in:      # centre of the marker region, scaled to the client's frame size
+                        hh, ww = img.shape[:2]
+                        person = img[int(hh * .1):int(hh * .2), int(ww * .1):int(ww * .2), :3].reshape(-1, 3).astype(int)
+                    else:
+                        person = img[620:860, 650:800, :3].reshape(-1, 3).astype(int)  # left person's torso (bus scene)
                     magenta = float(((person[:, 0] > 200) & (person[:, 1] < 60) & (person[:, 2] > 200)).mean())
                 got.append((idx, host_time_s(), magenta))
         th = threading.Thread(target=watch, daemon=True); th.start()
         time.sleep(seconds)
         stop.set(); th.join(2)
         ps, cs, ai = ctx.pipeline.stats(), client.stats(), ctx.ai.stats()
+        ctx_capture_fps = ctx.capture.stats().measured_fps
         client.stop()
         ctx.stop_capture()
         steady = got[len(got) // 3:]
@@ -273,7 +291,9 @@ def pipeline_e2e_selftest(out_path: str, seconds: float = 8.0, out_device: str =
             render_errors=ps.render_errors, camera_state=ps.camera_state, camera_sent=ps.camera_sent,
             camera_dropped=ps.camera_dropped, ai_model=ai.model, ai_fps=round(ai.achieved_fps, 1),
             ai_ms=round(ai.inference_ms_avg, 2), tracks=ai.tracks_active,
-            client_frames=len(got), client_distinct_fps=round(uniq / max(dur, 1e-3), 1),
+            client_frames=len(got),
+            client_distinct_fps=round((len(steady) if obs_in else uniq) / max(dur, 1e-3), 1),
+            input_fps=round(ctx_capture_fps, 1),
             client_resolution=f"{cs.width}x{cs.height}",
             magenta_fraction_median=round(float(np.median(mag)), 3) if mag else 0.0,
             frames_with_replacement=round(float(np.mean([m > 0.3 for m in mag])), 3) if mag else 0.0)

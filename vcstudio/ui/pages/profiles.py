@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (QFileDialog, QHBoxLayout, QInputDialog, QLabel, Q
 
 from vcstudio.core.profiles import ProfileError
 from vcstudio.ui.widgets import Card, page_scaffold
+from vcstudio.i18n import tr
 
 
 class ProfilesPage:
@@ -28,7 +29,7 @@ class ProfilesPage:
         for key, label in [("activate", "Activate"), ("new", "New…"), ("rename", "Rename…"),
                            ("duplicate", "Duplicate"), ("delete", "Delete"), ("import", "Import…"),
                            ("export", "Export…")]:
-            b = QPushButton(label)
+            b = QPushButton(tr(label))
             if key == "activate":
                 b.setObjectName("primary")
             if key == "delete":
@@ -72,7 +73,7 @@ class ProfilesPage:
         self.list.blockSignals(True)
         self.list.clear()
         for n in self.ctx.profiles.names():
-            label = f"{n}   ● active" if n == self.ctx.profiles.active_name else n
+            label = f"{n}   ● " + tr("active") if n == self.ctx.profiles.active_name else n
             self.list.addItem(label)
             self.list.item(self.list.count() - 1).setData(256, n)
             if n == cur:
@@ -88,29 +89,30 @@ class ProfilesPage:
         doc = self.ctx.profiles.get(name)
         ts = lambda t: datetime.datetime.fromtimestamp(t).strftime("%Y-%m-%d %H:%M")
         body = doc["body"]
-        self.info.setText(f"<b>{name}</b> · created {ts(doc['created'])} · modified {ts(doc['modified'])} · "
-                          f"{len(body['rois'])} ROI(s) · mode {body['performance_mode']}")
+        self.info.setText(f"<b>{name}</b> · " + tr("created {c} · modified {m} · {n} ROI(s) · mode {mode}",
+                          c=ts(doc['created']), m=ts(doc['modified']), n=len(body['rois']),
+                          mode=tr(body['performance_mode'].replace("_", " "))))
         self.json.setPlainText(json.dumps(body, indent=2))
 
     def _guard(self, fn, *a):
         try:
             return fn(*a)
         except (ProfileError, OSError, ValueError) as e:
-            QMessageBox.warning(self.widget, "Profiles", str(e))
+            QMessageBox.warning(self.widget, tr("Profiles"), tr(str(e)))
 
     def activate(self):
         if n := self.selected():
             self._guard(self.ctx.profiles.switch, n)
 
     def new(self):
-        name, ok = QInputDialog.getText(self.widget, "New profile", "Name:")
+        name, ok = QInputDialog.getText(self.widget, tr("New profile"), tr("Name:"))
         if ok:
             self._guard(self.ctx.profiles.create, name)
 
     def rename(self):
         if not (n := self.selected()):
             return
-        name, ok = QInputDialog.getText(self.widget, "Rename profile", "New name:", text=n)
+        name, ok = QInputDialog.getText(self.widget, tr("Rename profile"), tr("New name:"), text=n)
         if ok:
             self._guard(self.ctx.profiles.rename, n, name)
 
@@ -121,14 +123,14 @@ class ProfilesPage:
     def delete(self):
         if not (n := self.selected()):
             return
-        if QMessageBox.question(self.widget, "Delete profile",
-                                f"Delete profile “{n}”? This cannot be undone.") == QMessageBox.Yes:
+        if QMessageBox.question(self.widget, tr("Delete profile"),
+                                tr("Delete profile “{n}”? This cannot be undone.", n=n)) == QMessageBox.Yes:
             self._guard(self.ctx.profiles.delete, n)
 
     def import_(self, path: str | None = None):
         from vcstudio.core.profile_bundle import import_bundle
         if path is None:
-            path, _ = QFileDialog.getOpenFileName(self.widget, "Import profile", str(Path.home()),
+            path, _ = QFileDialog.getOpenFileName(self.widget, tr("Import profile"), str(Path.home()),
                                                   "Profiles (*.vcsprofile *.json)")
         if path:
             fn = import_bundle if path.endswith(".vcsprofile") else self.ctx.profiles.import_file
@@ -139,7 +141,7 @@ class ProfilesPage:
         if not (n := self.selected()):
             return
         if path is None:
-            path, _ = QFileDialog.getSaveFileName(self.widget, "Export profile", str(Path.home() / f"{n}.vcsprofile"),
+            path, _ = QFileDialog.getSaveFileName(self.widget, tr("Export profile"), str(Path.home() / f"{n}.vcsprofile"),
                                                   "Profile with assets (*.vcsprofile);;Profile settings only (*.json)")
         if path:
             if path.endswith(".json"):

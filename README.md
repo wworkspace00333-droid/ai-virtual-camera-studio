@@ -6,6 +6,16 @@ All processing runs locally. The app contains no network code.
 
 > **Status: Stages 1–8 and 10–12 are complete: capture (OBS Virtual Camera and the direct OBS plugin), on-device AI detection and tracking, the ROI editor, image and video replacement, the Metal compositor, the real-time pipeline with watchdogs, M5 optimisation, and the 2-hour soak. Stage 13a is also complete: a self-contained `.app` and DMG. Stage 9 (virtual camera) is code-complete. Stage 9 and Stage 13b (embedded extension, Developer ID signing, notarization) wait on Xcode and an Apple Developer team.** See [docs/ROADMAP.md](docs/ROADMAP.md).
 
+## Interface language
+
+English and Russian. Settings > Language: *Automatic* follows the macOS language; the choice applies after a restart.
+Translations live in `vcstudio/i18n_ru.py` (English text is the key, so a missing entry falls back to English).
+
+## Without an Apple Developer account
+
+The processed video can go out through **OBS Virtual Camera** instead of the app's own camera: Virtual Camera page >
+*Send processed video to*. Verified end to end on this setup; see [docs/OBS_INTEGRATION.md](docs/OBS_INTEGRATION.md).
+
 ## Supported Macs
 
 Any Apple Silicon Mac (M1 through M5, any memory size) on macOS 13 or later. Everything is built for `arm64-apple-macos13.0`; Intel Macs are not supported.

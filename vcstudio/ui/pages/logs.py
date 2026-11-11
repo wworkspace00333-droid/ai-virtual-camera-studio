@@ -9,6 +9,7 @@ from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit, QPushButton, QTableWidget, QTableWidgetItem
 
 from vcstudio.ui.widgets import Card, page_scaffold
+from vcstudio.i18n import tr
 
 LEVELS = {"DEBUG": 10, "INFO": 20, "WARNING": 30, "ERROR": 40}
 
@@ -22,18 +23,18 @@ class LogsPage:
 
     def __init__(self, ctx):
         self.ctx = ctx
-        self.widget, lay = page_scaffold("Logs", f"Live application log. Files: {ctx.paths.logs_dir}")
+        self.widget, lay = page_scaffold("Logs", tr("Live application log. Files: {path}", path=ctx.paths.logs_dir))
         bar = QHBoxLayout()
         self.level = QComboBox()
         self.level.addItems(list(LEVELS))
         self.level.setCurrentText("INFO")
         self.filter = QLineEdit()
-        self.filter.setPlaceholderText("Filter text…")
-        self.pause_btn = QPushButton("Pause")
+        self.filter.setPlaceholderText(tr("Filter text…"))
+        self.pause_btn = QPushButton(tr("Pause"))
         self.pause_btn.setCheckable(True)
-        clear = QPushButton("Clear view")
-        reveal = QPushButton("Open log folder")
-        for w in (QLabel("Level"), self.level, self.filter, self.pause_btn, clear, reveal):
+        clear = QPushButton(tr("Clear view"))
+        reveal = QPushButton(tr("Open log folder"))
+        for w in (QLabel(tr("Level")), self.level, self.filter, self.pause_btn, clear, reveal):
             bar.addWidget(w)
         lay.addLayout(bar)
         self.view = QPlainTextEdit()
@@ -44,7 +45,7 @@ class LogsPage:
         lay.addWidget(self.view)
         ev = Card("Recorded events (SQLite)")
         self.events = QTableWidget(0, 4)
-        self.events.setHorizontalHeaderLabels(["Time", "Level", "Component", "Message"])
+        self.events.setHorizontalHeaderLabels([tr("Time"), tr("Level"), tr("Component"), tr("Message")])
         self.events.horizontalHeader().setStretchLastSection(True)
         self.events.setMinimumHeight(200)
         ev.layout_.addWidget(self.events)
