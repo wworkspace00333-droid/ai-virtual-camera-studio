@@ -9,7 +9,7 @@ All processing runs locally. The app contains no network code.
 ## Supported Macs
 
 Any Apple Silicon Mac (M1 through M5, any memory size) on macOS 13 or later. Everything is built for `arm64-apple-macos13.0`; Intel Macs are not supported.
-Nothing is tuned to one chip: Maximum Quality picks its model from timings measured on the running Mac, and the memory warning and load-shedding thresholds scale with installed RAM (Settings > Memory warning). The published benchmarks were measured on a MacBook Pro M5 with 16 GB; other machines will reach different numbers.
+Nothing is tuned to one chip: Maximum Quality picks its model from timings measured on the running Mac, and the memory warning and load-shedding thresholds scale with installed RAM (Settings > Memory warning). Benchmarks are published for a MacBook Pro M5 and a MacBook Pro M2 Pro, both 16 GB (60 fps output in every mode on both; see [docs/BENCHMARK.md](docs/BENCHMARK.md)). Other machines will reach different numbers.
 
 ## Quick start (development)
 

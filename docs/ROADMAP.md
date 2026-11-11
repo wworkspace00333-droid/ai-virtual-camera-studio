@@ -24,7 +24,7 @@ Status values: ✅ done and tested · 🟡 in progress · ⬜ not started · ⛔
 - **Moved to a second Mac:** fresh `.venv` (Python 3.12.16), native libraries and dev app rebuilt; the full suite passes here (live tests skipped as usual).
 - **Camera extension now builds:** with Xcode 27 the `native/project.yml` project builds unsigned (`BUILD SUCCEEDED`), and the arm64 extension is embedded in the host app. Installing it still needs a Developer team signature (Stage 9 stays 🟡).
 - **Memory thresholds follow installed RAM:** new setting `performance.memory_limits` = `auto` (default) | `manual`. Auto warns at 3/16 of RAM, clamped to 1–8 GB (3072 MB on 16 GB, as before), and sheds load at twice that. Old settings files switch to auto because they lack the new key. Changes apply live to the watchdog and the resource monitor.
-- **Not yet measured on this Mac:** benchmark and soak numbers are still M5-only.
+- **Benchmark repeated on the M2 Pro:** 60 fps output in all four modes and both scenarios; see [BENCHMARK.md](BENCHMARK.md). The soak test was not repeated here.
 
 ## Stage 11: optimisation summary
 

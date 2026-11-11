@@ -50,6 +50,37 @@ App CPU is a percentage of one core; the M5 has 10.
 - **Power management shows up in the numbers.** At low duty cycles the GPU and Neural Engine clock down, so per-inference time in Low Resource is not lower than in Performance. When AI runs on every frame (Maximum Quality), the GPU stays clocked up and compositing latency is lowest.
 - **One transient:** in 1 of 5 Low Resource runs, one 1-second window dropped to 45 fps. It was not reproduced in 4 repeat runs (all with a minimum of 59–60).
 
+## Second machine: MacBook Pro M2 Pro, 16 GB (2026-11-12)
+
+Same command, same scenarios, 20 s per mode after warm-up. macOS 27.2.1; M2 Pro with 6 performance + 4 efficiency cores. Headless, so these numbers don't include the preview window.
+
+**Scenario A: detection + image overlay + video region + pixelate effect on people**
+
+| Mode | Output fps avg | min 1 s | Latency avg | Latency p95 | Processing | AI model | AI fps | AI p95 | App CPU | GPU (sys) | Footprint |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Performance | 59.9 | 59 | 3.1 ms | 4.2 ms | 3.1 ms | yolo11n | 30.0 | 12.9 ms | 44 % | 38 % | 297 MB |
+| Balanced | 60.0 | 59 | 3.2 ms | 4.6 ms | 3.1 ms | yolo11n | 20.0 | 14.4 ms | 38 % | 38 % | 310 MB |
+| Low Resource | 59.9 | 59 | 3.3 ms | 4.9 ms | 3.2 ms | yolo11n | 12.0 | 15.2 ms | 31 % | 37 % | 277 MB |
+| Maximum Quality | 59.9 | 59 | 2.3 ms | 3.3 ms | 2.2 ms | yolo11m | 59.0 | 16.9 ms | 58 % | 37 % | 273 MB |
+
+**Scenario B: segmentation (object silhouette replacement) + image overlay + video region**
+
+| Mode | Output fps avg | min 1 s | Latency avg | Latency p95 | Processing | AI model | AI fps | AI p95 | App CPU | GPU (sys) | Footprint |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Performance | 60.1 | 60 | 3.3 ms | 4.7 ms | 3.2 ms | yolo11n-seg | 30.5 | 13.0 ms | 50 % | 38 % | 301 MB |
+| Balanced | 60.0 | 59 | 3.2 ms | 4.7 ms | 3.1 ms | yolo11n-seg | 20.0 | 17.0 ms | 41 % | 39 % | 277 MB |
+| Low Resource | 60.1 | 60 | 3.3 ms | 4.8 ms | 3.2 ms | yolo11n-seg | 12.0 | 17.3 ms | 34 % | 37 % | 292 MB |
+| Maximum Quality | 60.0 | 60 | 3.2 ms | 4.3 ms | 3.1 ms | yolo11m-seg | 57.0 | 19.5 ms | 57 % | 39 % | 294 MB |
+
+**Compared with the M5**
+
+- **60 fps output in every mode and both scenarios here too**; AI targets of 12 / 20 / 30 fps are met exactly.
+- **Maximum Quality chose the same models** (yolo11m / yolo11m-seg) from its own on-device timing. With segmentation it reached 57 fps of AI instead of the M5's 59.5, and its p95 inference is higher (19.5 ms vs 14.9 ms), still inside the 25 ms budget.
+- **Per-frame latency is about the same or slightly lower** (p95 3.3–4.9 ms vs 3.3–6.2 ms); the M2 Pro's GPU is larger than the base M5's.
+- **Footprint is 270–310 MB** vs 336–368 MB on the M5.
+- **Not repeated on this machine:** the 2-hour soak, the GUI CPU profile and the end-to-end camera run.
+- Single run per mode; the M5 section notes a one-off 45 fps window in 1 of 5 runs, so treat one run as indicative.
+
 ## Model latency (1920×1080 frame, Core ML, compute units "All", 40 runs)
 
 | Model | Size | Median | p95 |
