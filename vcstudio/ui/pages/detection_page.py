@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (QButtonGroup, QHeaderView, QCheckBox, QDoubleSpinBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
-                               QPushButton, QRadioButton, QSlider, QTableWidget, QTableWidgetItem, QTreeWidget,
+                               QPushButton, QRadioButton, QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTreeWidget,
                                QTreeWidgetItem, QVBoxLayout)
 
 from vcstudio.ai.labels import FACE, GROUPS, group_of
@@ -76,6 +76,8 @@ class DetectionPage:
         self.trk_on = QCheckBox(tr("Track objects (stable IDs, smoothing, occlusion recovery, per-frame interpolation)"))
         self.trk_low = QDoubleSpinBox(); self.trk_low.setRange(0.01, 0.5); self.trk_low.setSingleStep(0.05)
         self.trk_buf = QDoubleSpinBox(); self.trk_buf.setRange(0.1, 10); self.trk_buf.setSuffix(tr(" s")); self.trk_buf.setSingleStep(0.5)
+        self.trk_hits = QSpinBox(); self.trk_hits.setRange(1, 10)
+        self.trk_hits.setToolTip(tr("Higher hides more one-off false detections but shows new objects slightly later."))
         self.trk_coast = QDoubleSpinBox(); self.trk_coast.setRange(0.0, 3); self.trk_coast.setSuffix(tr(" s")); self.trk_coast.setSingleStep(0.1)
         self.trk_smooth = QSlider(Qt.Horizontal); self.trk_smooth.setRange(0, 100)
         self.trk_smooth_lbl = QLabel()
@@ -85,6 +87,7 @@ class DetectionPage:
         tf.addRow(tr("Low-score threshold"), self.trk_low)
         tf.addRow(tr("Lost-object recovery window"), self.trk_buf)
         tf.addRow(tr("Keep showing lost objects for"), self.trk_coast)
+        tf.addRow(tr("Show a new object after N detections in a row"), self.trk_hits)
         tf.addRow(tr("Smoothing"), rs)
         tf.addRow(tr(""), self.trk_class)
         trk.layout_.addLayout(tf)
@@ -106,7 +109,7 @@ class DetectionPage:
         self.fixed.valueChanged.connect(self._changed)
         for b in (self.freq_auto, self.freq_fixed, self.cls_all, self.cls_only, self.trk_on, self.trk_class):
             b.toggled.connect(self._changed)
-        for w in (self.trk_low, self.trk_buf, self.trk_coast):
+        for w in (self.trk_low, self.trk_buf, self.trk_coast, self.trk_hits):
             w.valueChanged.connect(self._changed)
         self.trk_smooth.valueChanged.connect(self._changed)
         self.tree.itemChanged.connect(self._item_changed)
@@ -144,7 +147,7 @@ class DetectionPage:
         body = self.ctx.profiles.active()["body"]
         det, trk = body["detection"], body["tracking"]
         widgets = (self.conf, self.iou, self.fixed, self.freq_auto, self.freq_fixed, self.cls_all, self.cls_only, self.tree,
-                   self.trk_on, self.trk_low, self.trk_buf, self.trk_coast, self.trk_smooth, self.trk_class)
+                   self.trk_on, self.trk_low, self.trk_buf, self.trk_coast, self.trk_smooth, self.trk_class, self.trk_hits)
         for w in widgets:
             w.blockSignals(True)
         self.conf.setValue(int(round(det["confidence"] * 100)))
@@ -160,6 +163,7 @@ class DetectionPage:
         self.trk_low.setValue(trk.get("low_thresh", 0.1))
         self.trk_buf.setValue(trk.get("track_buffer_s", 1.5))
         self.trk_coast.setValue(trk.get("coast_s", 0.4))
+        self.trk_hits.setValue(int(trk.get("min_hits", 3)))
         self.trk_smooth.setValue(int(round(trk.get("smoothing", 0.5) * 100)))
         self.trk_class.setChecked(trk.get("class_aware", True))
         for w in widgets:
@@ -171,7 +175,7 @@ class DetectionPage:
         self.iou_lbl.setText(f"{self.iou.value() / 100:.2f}")
         self.fixed.setEnabled(self.freq_fixed.isChecked())
         self.trk_smooth_lbl.setText(f"{self.trk_smooth.value() / 100:.2f}")
-        for w in (self.trk_low, self.trk_buf, self.trk_coast, self.trk_smooth, self.trk_class):
+        for w in (self.trk_low, self.trk_buf, self.trk_coast, self.trk_smooth, self.trk_class, self.trk_hits):
             w.setEnabled(self.trk_on.isChecked())
         mode = PERFORMANCE_MODES[self.ctx.settings.get("performance.mode")]
         tgt = tr("as fast as sustainable") if mode.ai_fps is None else f"{mode.ai_fps:g} " + tr("fps")
@@ -220,6 +224,7 @@ class DetectionPage:
             t["low_thresh"] = round(self.trk_low.value(), 3)
             t["track_buffer_s"] = round(self.trk_buf.value(), 2)
             t["coast_s"] = round(self.trk_coast.value(), 2)
+            t["min_hits"] = int(self.trk_hits.value())
             t["smoothing"] = self.trk_smooth.value() / 100
             t["class_aware"] = self.trk_class.isChecked()
         self.ctx.update_active_profile(mutate)

@@ -217,6 +217,17 @@ RU: dict[str, str] = {
     "Running on {src} ({w}×{h}), {n} iterations each…": "Идёт на {src} ({w}×{h}), по {n} прогонов…",
     "Done: {n} configurations, saved to the benchmark history.": "Готово: конфигураций {n}, сохранено в историю бенчмарков.",
     "Benchmark failed: {e}": "Бенчмарк не удался: {e}",
+    "Accuracy check (labelled photos)": "Проверка точности (размеченные фото)",
+    "Check accuracy": "Проверить точность",
+    "Runs every installed model on 16 COCO photos with known correct boxes (53 classes) and compares. Columns use the confidence threshold of the active profile.":
+        "Прогоняет каждую установленную модель по 16 фото COCO с заранее известными правильными рамками (53 класса) и сравнивает. Столбцы считаются при пороге уверенности активного профиля.",
+    "Correct boxes": "Верных рамок",
+    "Objects found": "Найдено объектов",
+    "Best threshold (F1)": "Лучший порог (F1)",
+    "Checking… (a few seconds per model)": "Проверка… (несколько секунд на модель)",
+    "Done: {n} models checked on {i} photos ({b} correct boxes).": "Готово: проверено моделей {n} на {i} фото (правильных рамок {b}).",
+    "Accuracy check failed: {e}": "Проверка точности не удалась: {e}",
+    "Threshold used for the columns: {c}.": "Порог для столбцов: {c}.",
     "Larger model input / highest sustainable inference rate, measured at runtime.":
         "Крупнее модель / максимальная устойчивая частота, измеряется во время работы.",
     "bundled": "в комплекте", "user": "пользовательская", "converted": "сконвертирована",
@@ -242,6 +253,9 @@ RU: dict[str, str] = {
     "Smoothing": "Сглаживание",
     "Lost-object recovery window": "Окно восстановления потерянных",
     "Keep showing lost objects for": "Показывать потерянные объекты ещё",
+    "Show a new object after N detections in a row": "Показывать новый объект после N обнаружений подряд",
+    "Higher hides more one-off false detections but shows new objects slightly later.":
+        "Больше — меньше случайных ложных рамок, но новые объекты появляются чуть позже.",
     "Class-aware matching (an ID never changes class)": "С учётом класса (ID никогда не меняет класс)",
     "The confidence threshold above is ByteTrack's high threshold. Detections between the low and high thresholds can only continue existing tracks.":
         "Порог уверенности выше — это верхний порог ByteTrack. Обнаружения между нижним и верхним порогом могут только продолжать уже существующие треки.",

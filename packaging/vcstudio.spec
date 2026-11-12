@@ -15,6 +15,8 @@ for mp in sorted((ROOT / "models").glob("*.mlpackage")):
         datas.append((str(mp.with_suffix(".json")), "models"))
 for name in ("bus.jpg", "logo_alpha.png", "clip_h264.mp4"):
     datas.append((str(ROOT / "tests" / "data" / name), "sample_data"))
+for sub in ("images", "labels"):            # accuracy check data (AI Engine page)
+    datas.append((str(ROOT / "tests" / "data" / "coco16" / sub), f"sample_data/coco16/{sub}"))
 for py in glob.glob(str(ROOT / "scripts" / "*.py")):
     datas.append((py, "scripts"))
 # The OBS plugin is itself a bundle; PyInstaller would flatten it, so build_app.sh copies it into

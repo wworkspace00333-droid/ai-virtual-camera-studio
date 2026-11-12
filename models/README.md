@@ -11,9 +11,9 @@ The runtime app loads Core ML packages (`<name>.mlpackage` plus `<name>.json` me
 
 | Model | Size | Use |
 |---|---|---|
-| yolo11n | 5.2 MB | Default ("Auto") for the Performance, Balanced and Low Resource modes |
-| yolo11s | 18.2 MB | Used by "Auto" in the Maximum Quality mode |
-| yolo11m | 39 MB | Maximum Quality (adaptive: chosen when it sustains p95 ≤ 25 ms; it does on the M5) |
+| yolo11n | 5.2 MB | Low Resource mode ("Auto" there always takes the smallest model) |
+| yolo11s | 18.2 MB | "Auto" in Performance / Balanced when the larger model doesn't fit the budget (the M2 Pro case) |
+| yolo11m | 39 MB | "Auto" first choice in Performance (p95 ≤ 20 ms), Balanced and Maximum Quality (p95 ≤ 25 ms) |
 | yolo11m-seg | 43 MB | Maximum Quality with object replacement |
 | yolo11n-seg | ~6 MB | Instance segmentation. Loaded instead of the detector only while an ROI uses object (silhouette) replacement |
 

@@ -10,7 +10,7 @@ ByteTrack (Zhang et al., 2022) association per update:
   2. high-score detections  <-> tracked + lost tracks       (IoU, Hungarian)
   3. low-score detections   <-> still-unmatched tracked     (recovers occluded/blurred objects)
   4. unmatched tracked      -> lost (kept for track_buffer_s, velocity damped, can be re-matched)
-  5. tentative tracks       <-> remaining high detections   (confirmed on second hit)
+  5. tentative tracks       <-> remaining high detections   (confirmed after `min_hits` consecutive hits)
   6. remaining high dets above new_track_thresh -> new tentative tracks
 Matching is class-aware by default (a "car" detection never continues a "person" track).
 """
@@ -46,6 +46,7 @@ class TrackerConfig:
     max_extrapolate_s: float = 0.3  # cap on forward prediction past the last update
     smoothing: float = 0.5          # 0 = follow detections tightly, 1 = very smooth
     class_aware: bool = True
+    min_hits: int = 3               # consecutive detections before a new object is shown (filters flicker)
 
     @classmethod
     def from_profile(cls, body: dict) -> "TrackerConfig":
@@ -325,7 +326,7 @@ class ByteTracker:
             tr.mask = d.mask
         if tr.state == LOST:
             self.stats.recovered += 1
-        if tr.state in (LOST, TENTATIVE):
+        if tr.state == LOST or (tr.state == TENTATIVE and tr.hits >= self.cfg.min_hits):
             tr.state = TRACKED
         tr.lost_since = None
 

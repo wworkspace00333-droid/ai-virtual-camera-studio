@@ -206,3 +206,21 @@ def test_update_cost_small():
     for k in range(30, 60):
         tr.update([det("person", x + k, y, 100, 200, conf=0.8) for x, y in boxes], k / 30, (1920, 1080))
     assert (time.perf_counter() - t0) / 30 * 1000 < 5.0
+
+
+def test_new_object_needs_min_hits_before_it_is_shown():
+    from vcstudio.ai.detection import Detection
+    from vcstudio.ai.tracking import ByteTracker, TrackerConfig
+    trk = ByteTracker(TrackerConfig(min_hits=3))
+    trk.update([], 0.0, (1920, 1080))                       # not the first frame any more
+    shown = []
+    for k in range(1, 4):
+        trk.update([Detection("cup", 0.9, 100, 100, 200, 200, 41, "yolo")], k * 0.05, (1920, 1080))
+        shown.append(len(trk.snapshot(k * 0.05)))
+    assert shown == [0, 0, 1]                                 # one-off flicker never reaches the output
+    trk2 = ByteTracker(TrackerConfig(min_hits=3))
+    trk2.update([], 0.0, (1920, 1080))
+    trk2.update([Detection("tie", 0.9, 10, 10, 50, 50, 27, "yolo")], 0.05, (1920, 1080))
+    trk2.update([], 0.10, (1920, 1080))                       # gone next frame: removed, never shown
+    trk2.update([], 0.15, (1920, 1080))
+    assert trk2.snapshot(0.15) == [] and trk2.stats.ids_created == 1

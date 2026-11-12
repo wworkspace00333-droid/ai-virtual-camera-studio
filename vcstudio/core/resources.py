@@ -36,6 +36,11 @@ def sample(name: str) -> Path:
     return bundle_root() / "sample_data" / name if frozen() else REPO / "tests" / "data" / name
 
 
+def accuracy_data() -> Path:
+    """16 labelled COCO images used by the accuracy check (tests/data/coco16)."""
+    return bundle_root() / "sample_data" / "coco16" if frozen() else REPO / "tests" / "data" / "coco16"
+
+
 def obs_plugin_bundle() -> Path:
     # packaged: Contents/Resources/obs-plugin/ (sys._MEIPASS is Contents/Frameworks)
     return (bundle_root().parent / "Resources" / "obs-plugin" / "vcstudio-obs.plugin" if frozen()

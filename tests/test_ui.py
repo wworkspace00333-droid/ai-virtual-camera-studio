@@ -100,3 +100,15 @@ def test_last_page_restored(qtbot, paths):
     w2 = MainWindow(ctx2); qtbot.addWidget(w2)
     assert w2.pages[w2.stack.currentIndex()].key == "logs"
     w2.close(); ctx2.shutdown()
+
+
+def test_ai_page_accuracy_check_fills_table(win, qtbot):
+    from vcstudio.ai.model_manager import REPO_MODELS
+    if not any(REPO_MODELS.glob("*.mlpackage")):
+        pytest.skip("no models converted")
+    page = win.pages[win.page_keys().index("ai")]
+    page.start_accuracy()
+    qtbot.waitUntil(lambda: page.acc_btn.isEnabled(), timeout=120000)
+    assert page.acc.rowCount() >= 1
+    assert float(page.acc.item(0, 1).text()) > 0.3                 # mAP50 column
+    assert page.acc.item(0, 2).text().endswith("%")

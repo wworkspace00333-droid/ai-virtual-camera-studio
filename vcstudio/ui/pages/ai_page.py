@@ -24,6 +24,11 @@ class _BenchSignals(QObject):
     done = Signal(str)
 
 
+class _AccSignals(QObject):
+    row = Signal(object)     # (model name, metrics dict)
+    done = Signal(str)
+
+
 def run_benchmark(models_dir, frame: Frame, emit_row, iters: int = BENCH_ITERS) -> list[dict]:
     """Median/p95 latency for every model x compute unit on `frame`. Loads one model at a time."""
     from vcstudio.ai.coreml_engine import CoreMLDetector
@@ -111,6 +116,21 @@ class AIEnginePage:
         self.bench.setMinimumHeight(220)
         bench.layout_.addWidget(self.bench)
         lay.addWidget(bench)
+        acc = Card("Accuracy check (labelled photos)")
+        arow = QHBoxLayout()
+        self.acc_btn = QPushButton(tr("Check accuracy"))
+        self.acc_info = QLabel(tr("Runs every installed model on 16 COCO photos with known correct boxes (53 classes) "
+                                  "and compares. Columns use the confidence threshold of the active profile."))
+        self.acc_info.setObjectName("muted"); self.acc_info.setWordWrap(True)
+        arow.addWidget(self.acc_btn); arow.addWidget(self.acc_info, 1)
+        acc.layout_.addLayout(arow)
+        self.acc = QTableWidget(0, 6)
+        self.acc.setHorizontalHeaderLabels([tr("Model"), "mAP50", tr("Correct boxes"), tr("Objects found"),
+                                            tr("Best threshold (F1)"), tr("Median ms")])
+        self.acc.horizontalHeader().setStretchLastSection(True)
+        self.acc.setMinimumHeight(190)
+        acc.layout_.addWidget(self.acc)
+        lay.addWidget(acc)
         env = QLabel(self._env_text()); env.setObjectName("muted")
         lay.addWidget(env)
         lay.addStretch()
@@ -119,6 +139,10 @@ class AIEnginePage:
         self._sig.row.connect(self._bench_row)
         self._sig.done.connect(self._bench_done)
         self.bench_btn.clicked.connect(self.start_benchmark)
+        self._acc_sig = _AccSignals()
+        self._acc_sig.row.connect(self._acc_row)
+        self._acc_sig.done.connect(self._acc_done)
+        self.acc_btn.clicked.connect(self.start_accuracy)
         self._load_from_profile()
         for w in (self.enabled, self.face):
             w.toggled.connect(self._save)
@@ -202,6 +226,41 @@ class AIEnginePage:
         from vcstudio.core.resources import sample
         arr = load_bgra(sample("bus.jpg"))
         return Frame(0, 0, 0, arr.shape[1], arr.shape[0], array=arr, source="bus.jpg")
+
+    # ---------------- accuracy
+    def start_accuracy(self):
+        from vcstudio.core.resources import accuracy_data
+        self.acc_btn.setEnabled(False)
+        self.acc.setRowCount(0)
+        self._acc_conf = float(self.ctx.profiles.active()["body"]["detection"].get("confidence", 0.45))
+        self.acc_info.setText(tr("Checking… (a few seconds per model)"))
+        models_dir, data = self.ctx.paths.models_dir, accuracy_data()
+
+        def work():
+            try:
+                from vcstudio.ai.evaluation import evaluate_models
+                res = evaluate_models(data, models_dir, progress=lambda n, m: self._acc_sig.row.emit((n, m)))
+                self._acc_sig.done.emit(tr("Done: {n} models checked on {i} photos ({b} correct boxes).",
+                                           n=len(res["models"]), i=res["images"],
+                                           b=next(iter(res["models"].values()))["gt_boxes"] if res["models"] else 0))
+            except Exception as e:
+                log.exception("accuracy check failed")
+                self._acc_sig.done.emit(tr("Accuracy check failed: {e}", e=e))
+        threading.Thread(target=work, name="ai-accuracy", daemon=True).start()
+
+    def _acc_row(self, item):
+        name, m = item
+        at = min(m["curve"], key=lambda r: abs(r["conf"] - self._acc_conf))
+        i = self.acc.rowCount(); self.acc.insertRow(i)
+        vals = (name, f"{m['map50']:.3f}", f"{at['precision'] * 100:.0f}%", f"{at['recall'] * 100:.0f}%",
+                f"{m['best_threshold']:.2f} ({m['best_f1']:.2f})", f"{m['median_ms']:.1f}")
+        for j, v in enumerate(vals):
+            self.acc.setItem(i, j, QTableWidgetItem(v))
+        self.acc.resizeColumnsToContents()
+
+    def _acc_done(self, msg):
+        self.acc_info.setText(msg + " " + tr("Threshold used for the columns: {c}.", c=f"{self._acc_conf:.2f}"))
+        self.acc_btn.setEnabled(True)
 
     def start_benchmark(self):
         self.bench_btn.setEnabled(False)

@@ -81,6 +81,30 @@ Same command, same scenarios, 20 s per mode after warm-up. macOS 27.2.1; M2 Pro 
 - **Not repeated on this machine:** the 2-hour soak, the GUI CPU profile and the end-to-end camera run.
 - Single run per mode; the M5 section notes a one-off 45 fps window in 1 of 5 runs, so treat one run as indicative.
 
+## Detection accuracy (labelled data, 2026-11-12, M2 Pro)
+
+The app's own Core ML models, run exactly as the app runs them (Vision, compute units "All"), on
+Ultralytics COCO128: 128 COCO images, 929 labelled boxes. `scripts/eval_accuracy.py` (data download
+instructions inside). P / R = precision (share of shown boxes that are correct) / recall (share of
+objects found) at IoU 0.5.
+
+| Model | mAP50 | mAP50-95 | P / R @0.25 | P / R @0.35 | P / R @0.45 | P / R @0.50 | Best F1 (conf) | Median ms |
+|---|---|---|---|---|---|---|---|---|
+| yolo11n | 0.667 | 0.488 | 0.76 / 0.53 | 0.83 / 0.48 | 0.89 / 0.43 | 0.91 / 0.40 | 0.627 (0.25) | 5.2 |
+| yolo11s | 0.737 | 0.564 | 0.78 / 0.64 | 0.84 / 0.56 | 0.88 / 0.51 | 0.90 / 0.49 | 0.700 (0.20) | 6.7 |
+| yolo11m | 0.764 | 0.590 | 0.78 / 0.65 | 0.86 / 0.59 | 0.90 / 0.54 | 0.92 / 0.51 | 0.717 (0.20) | 13.0 |
+| yolo11n-seg | 0.638 | 0.479 | 0.80 / 0.52 | 0.86 / 0.45 | — | 0.91 / 0.36 | 0.629 (0.25) | 9.6 |
+| yolo11m-seg | 0.765 | 0.588 | 0.81 / 0.66 | 0.86 / 0.60 | — | 0.92 / 0.50 | 0.724 (0.25) | 20.2 |
+
+What this changed:
+- **"Auto" no longer means yolo11n** outside Low Resource: yolo11s finds 8–11 % more objects at the same precision.
+- **Default confidence 0.35 → 0.45** for new profiles: about a quarter fewer wrong boxes (precision 0.84 → 0.88 with yolo11s) for 5 points of recall.
+- **New objects need 3 consecutive detections** before they are shown (was 2): one-off false detections, the usual source of flickering stray boxes, never reach the output. Adjustable on the Detection page.
+- Weakest classes are small objects (mouse, scissors, handbag, cell phone, traffic light): expect misses there.
+
+A 16-image subset (`tests/data/coco16`, 53 classes) backs `tests/test_accuracy.py` (mAP50 floors per model) and the
+**AI Engine > Check accuracy** button, so accuracy can be verified on any Mac.
+
 ## Model latency (1920×1080 frame, Core ML, compute units "All", 40 runs)
 
 | Model | Size | Median | p95 |
