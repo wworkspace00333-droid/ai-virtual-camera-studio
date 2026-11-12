@@ -39,6 +39,10 @@ Status values: ✅ done and tested · 🟡 in progress · ⬜ not started · ⛔
   camera → screen (dense 12×6 grid, coarse 6×3 fallback, mirrored views handled), frame detection on a grey
   picture, manual frame drawing, card switching, mirror option. 10 tests, including the whole dialog flow with a
   simulated screen; verified live.
+- **Card for a game 0.2.0:** several frames per game (all found automatically, reading order), named layouts per
+  game, card list with drag and drop and ⌘V paste, global hotkeys (next / previous card, show / hide). Verified live
+  with a two-frame stand-in game: both frames found (27 markers), cards placed and mirrored correctly, hotkeys switch
+  and hide them. 15 tests.
 - **Second-Mac verification:** DMG rebuilt and self-checked from the mounted image (11/12, ffmpeg optional), stress
   suite 7/7, live tests pass, 30-minute soak passes every criterion ([STABILITY.md](STABILITY.md)).
 - **Build scripts** fall back to `xcrun`'s SDK when the 26.x Command Line Tools SDK is missing.

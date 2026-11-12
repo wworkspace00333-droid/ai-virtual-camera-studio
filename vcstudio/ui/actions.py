@@ -27,6 +27,9 @@ ACTION_SPECS: list[ActionSpec] = [
     ActionSpec("emergency_passthrough", "Emergency passthrough", 1),
     ActionSpec("next_profile", "Switch to next profile", 1),
     ActionSpec("toggle_preview", "Show / hide preview", 1),
+    ActionSpec("card_next", "Game card: next", 1),
+    ActionSpec("card_prev", "Game card: previous", 1),
+    ActionSpec("card_toggle", "Game card: show / hide", 1),
 ]
 CURRENT_STAGE = 10
 

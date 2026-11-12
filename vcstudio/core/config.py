@@ -53,6 +53,9 @@ DEFAULT_HOTKEYS: dict[str, str] = {
     "emergency_passthrough": "Ctrl+Alt+P",
     "next_profile": "Ctrl+Alt+N",
     "toggle_preview": "Ctrl+Alt+V",
+    "card_next": "Ctrl+Alt+Right",
+    "card_prev": "Ctrl+Alt+Left",
+    "card_toggle": "Ctrl+Alt+C",
 }
 
 DEFAULT_SETTINGS: dict[str, Any] = {

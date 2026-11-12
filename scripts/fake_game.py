@@ -4,7 +4,7 @@ Shows a camera the way many games do (mirrored, cropped to a square, darkened ar
 a caption) and stays on top. Run through the dev bundle, which owns camera permission:
 
     open -n "build/AI Virtual Camera Studio Dev.app" --args --run-script fake_game.py \
-        [--device "OBS Virtual Camera"] [--seconds 120] [--no-mirror] [--save <png>]
+        [--device "OBS Virtual Camera"] [--seconds 120] [--no-mirror] [--frames 1|2] [--save <png>]
 
 --save writes the window's last picture when it closes (to check where the card landed).
 """
@@ -34,6 +34,7 @@ def main() -> int:
     opt = lambda k, d: a[a.index(k) + 1] if k in a else d
     device, seconds = opt("--device", "OBS Virtual Camera"), float(opt("--seconds", "120"))
     mirror, save = "--no-mirror" not in a, opt("--save", None)
+    nframes = int(opt("--frames", "1"))
     prewarm()
     app = QApplication(sys.argv[:1])
     latest = {"img": None}
@@ -65,12 +66,15 @@ def main() -> int:
         if mirror:
             sq = cv2.flip(sq, 1)
         v = cv2.resize(sq, (S, S), interpolation=cv2.INTER_AREA)
-        fx0, fy0, fx1, fy1 = int(S * 0.3), int(S * 0.22), int(S * 0.7), int(S * 0.82)
-        keep = v[fy0:fy1, fx0:fx1].copy()
+        boxes = ([(0.3, 0.22, 0.7, 0.82)] if nframes == 1 else [(0.08, 0.3, 0.44, 0.8), (0.56, 0.3, 0.92, 0.8)])
+        boxes = [tuple(int(S * c) for c in b) for b in boxes]
+        keep = [v[y0:y1, x0:x1].copy() for x0, y0, x1, y1 in boxes]
         v = (v * 0.45).astype(np.uint8)
-        v[fy0:fy1, fx0:fx1] = keep
-        cv2.rectangle(v, (fx0, fy0), (fx1, fy1), (255, 255, 255), 3)
-        cv2.putText(v, "Show your card", (fx0 - 10, fy0 - 14), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        for (x0, y0, x1, y1), k in zip(boxes, keep):
+            v[y0:y1, x0:x1] = k
+            cv2.rectangle(v, (x0, y0), (x1, y1), (255, 255, 255), 3)
+        cv2.putText(v, "Show your card" + ("s" if nframes > 1 else ""), (boxes[0][0], boxes[0][1] - 14),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         shown["img"] = v
         rgb = np.ascontiguousarray(cv2.cvtColor(v, cv2.COLOR_BGR2RGB))
         view.setPixmap(QPixmap.fromImage(QImage(rgb.data, S, S, rgb.strides[0], QImage.Format_RGB888).copy()))

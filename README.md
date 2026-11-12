@@ -31,8 +31,10 @@ Preview > **Card for a game…** puts a photo into the frame that a browser game
 Add card photos, open the game with OBS Virtual Camera selected, and click **Find the frame automatically**: the app
 hides for about 4 seconds, shows calibration markers and then a grey picture in the camera, and takes two
 screenshots. From them it works out how the game shows the camera (scaled, cropped, mirrored) and where its frame
-is. If the found frame is wrong, draw it on the screenshot. Click a card to switch; *Mirror the card* fixes a card that
-reads backwards in a mirrored view. Needs Screen Recording permission (macOS asks the first time). Verified live with
+is. All the game's frames are found (several card places, one card each); a wrong one can be drawn on the screenshot,
+and frames are saved per game (*Save frames as…*, then pick the game). Cards are added with the button, by dropping
+files or by pasting (⌘V). Hotkeys that also work while the game is in front: ⌘⌥→ / ⌘⌥← next / previous card in the
+selected frame, ⌘⌥C show / hide all cards. *Mirror the card* fixes a card that reads backwards in a mirrored view. Needs Screen Recording permission (macOS asks the first time). Verified live with
 a stand-in game (`scripts/fake_game.py`: mirrored, square-cropped, darkened around a captioned frame): 26 markers,
 0.35 px error, card placed in the frame.
 

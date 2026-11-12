@@ -139,17 +139,16 @@ def calibrate(screenshot_bgr: np.ndarray, camera_size: tuple[int, int], min_mark
     return Calibration(H, tuple(camera_size), n, err, mirrored)
 
 
-def find_frame(screenshot_bgr: np.ndarray, cal: Calibration, tol: int = 28,
-               min_frac: float = 0.02, max_frac: float = 0.9) -> np.ndarray | None:
-    """Screen rectangle (4x2, TL TR BR BL) of the inside of the game's frame, or None.
-
-    `screenshot_bgr` is taken while the camera shows grey_frame()."""
+def find_frames(screenshot_bgr: np.ndarray, cal: Calibration, tol: int = 28,
+                min_frac: float = 0.02, max_frac: float = 0.9) -> list[np.ndarray]:
+    """Screen rectangles (4x2, TL TR BR BL) of the insides of all the game's frames, in reading order
+    (top to bottom, then left to right). `screenshot_bgr` is taken while the camera shows grey_frame()."""
     h, w = screenshot_bgr.shape[:2]
     area = np.zeros((h, w), np.uint8)
     cv2.fillConvexPoly(area, np.round(cal.camera_area()).astype(np.int32), 1)
     if area.sum() < 100:
-        return None
-    # The game may tint or darken the picture around its frame, so the camera grey can look like any
+        return []
+    # The game may tint or darken the picture around its frames, so the camera grey can look like any
     # of the area's main colours: try the 3 most common ones.
     inside = area.astype(bool)
     px = screenshot_bgr[inside].astype(np.int16)
@@ -159,7 +158,7 @@ def find_frame(screenshot_bgr: np.ndarray, cal: Calibration, tol: int = 28,
     refs = [px[keys == k].mean(axis=0) for k in vals[np.argsort(-counts)[:3]]]
     shown = int(inside.sum())
     border = area - cv2.erode(area, np.ones((5, 5), np.uint8))
-    best = None
+    cands = []
     for ref in refs:
         same = (np.abs(screenshot_bgr.astype(np.int16) - ref).max(axis=2) <= tol) & inside
         same = cv2.morphologyEx(same.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
@@ -173,12 +172,34 @@ def find_frame(screenshot_bgr: np.ndarray, cal: Calibration, tol: int = 28,
                 continue
             if a < 0.6 * bw * bh:          # not roughly rectangular (text, icons)
                 continue
-            if best is None or a > best[4]:
-                best = (x, y, bw, bh, a)
-    if best is None:
+            cands.append((int(a), x, y, bw, bh))
+    # the same frame found with two reference colours, or a frame inside another: keep the larger
+    kept = []
+    for a, x, y, bw, bh in sorted(cands, reverse=True):
+        box = np.array([[x, y, x + bw, y + bh]], float)
+        if kept and _overlap(box, np.array([[k[1], k[2], k[1] + k[3], k[2] + k[4]] for k in kept], float)).max() > 0.5:
+            continue
+        kept.append((a, x, y, bw, bh))
+    row_h = max(1.0, float(np.median([k[4] for k in kept])) / 2) if kept else 1.0
+    kept.sort(key=lambda k: (round((k[2] + k[4] / 2) / row_h), k[1]))
+    return [np.array([[x, y], [x + bw, y], [x + bw, y + bh], [x, y + bh]], float) for _, x, y, bw, bh in kept]
+
+
+def _overlap(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Intersection over the smaller box, (1,4) vs (M,4) xyxy."""
+    ix = np.clip(np.minimum(a[:, None, 2], b[None, :, 2]) - np.maximum(a[:, None, 0], b[None, :, 0]), 0, None)
+    iy = np.clip(np.minimum(a[:, None, 3], b[None, :, 3]) - np.maximum(a[:, None, 1], b[None, :, 1]), 0, None)
+    area_a = (a[:, 2] - a[:, 0]) * (a[:, 3] - a[:, 1])
+    area_b = (b[:, 2] - b[:, 0]) * (b[:, 3] - b[:, 1])
+    return (ix * iy) / np.maximum(np.minimum(area_a[:, None], area_b[None, :]), 1e-9)
+
+
+def find_frame(screenshot_bgr: np.ndarray, cal: Calibration, **kw) -> np.ndarray | None:
+    """The largest of the game's frames, or None."""
+    frames = find_frames(screenshot_bgr, cal, **kw)
+    if not frames:
         return None
-    x, y, bw, bh, _ = best
-    return np.array([[x, y], [x + bw, y], [x + bw, y + bh], [x, y + bh]], float)
+    return max(frames, key=lambda q: (q[2, 0] - q[0, 0]) * (q[2, 1] - q[0, 1]))
 
 
 def frame_to_rect(cal: Calibration, screen_quad) -> tuple[float, float, float, float, float]:
@@ -209,23 +230,58 @@ def screenshot(path: Path | None = None) -> np.ndarray:
 
 
 # ------------------------------------------------------------------------------------ profile
+# A profile can hold several card frames ("slots", e.g. hand + table). Slot 1 is the region
+# "gamecard", slot n the region "gamecard-n". body["game"] keeps the card list (asset ids in the order
+# the user sees them), the active slot (what hotkeys act on) and named layouts, one per game.
 GAME_CARD_ID = "gamecard"
+SLOT_KEYS = ("cx", "cy", "w", "h", "rotation", "enabled")
+REP_KEYS = ("asset_id", "fit", "flip_h")
 
 
-def game_card_roi(body: dict) -> dict | None:
-    return next((r for r in body.get("rois", []) if r.get("id") == GAME_CARD_ID), None)
+def slot_id(n: int) -> str:
+    return GAME_CARD_ID if n == 1 else f"{GAME_CARD_ID}-{n}"
 
 
-def set_game_card(body: dict, *, rect=None, asset_id: str | None = None, fit: str | None = None,
+def slot_number(roi_id: str) -> int | None:
+    if roi_id == GAME_CARD_ID:
+        return 1
+    if roi_id.startswith(GAME_CARD_ID + "-") and roi_id[len(GAME_CARD_ID) + 1:].isdigit():
+        return int(roi_id[len(GAME_CARD_ID) + 1:])
+    return None
+
+
+def game_state(body: dict) -> dict:
+    g = body.setdefault("game", {})
+    g.setdefault("cards", [])
+    g.setdefault("layouts", {})
+    g.setdefault("active_slot", 1)
+    return g
+
+
+def game_slots(body: dict) -> dict[int, dict]:
+    """slot number -> region dict, in slot order."""
+    out = {}
+    for r in body.get("rois", []):
+        n = slot_number(r.get("id", ""))
+        if n is not None:
+            out[n] = r
+    return dict(sorted(out.items()))
+
+
+def game_card_roi(body: dict, slot: int = 1) -> dict | None:
+    return game_slots(body).get(slot)
+
+
+def set_game_card(body: dict, *, slot: int = 1, rect=None, asset_id: str | None = None, fit: str | None = None,
                   flip: bool | None = None, enabled: bool | None = None) -> dict:
-    """Create/update the game-card region in a profile body; only the given fields change.
+    """Create/update a card frame; only the given fields change.
 
     rect = (cx, cy, w, h, rotation) normalised to the camera picture (see frame_to_rect)."""
     from vcstudio.replacement.spec import ReplacementSpec
     from vcstudio.roi.model import ROI
-    d = game_card_roi(body)
+    d = game_card_roi(body, slot)
     if d is None:
-        r = ROI(id=GAME_CARD_ID, name="Game card", kind="rect", mode="manual", priority=200,
+        r = ROI(id=slot_id(slot), name=f"Game card {slot}", kind="rect", mode="manual", priority=200 + slot,
                 cx=0.5, cy=0.5, w=0.2, h=0.36)
         r.replacement = ReplacementSpec(enabled=True, mode="rect", fit="fit", background=[0, 0, 0, 0]).to_dict()
         d = r.to_dict()
@@ -235,6 +291,9 @@ def set_game_card(body: dict, *, rect=None, asset_id: str | None = None, fit: st
     rep = d.setdefault("replacement", {})
     if asset_id is not None:
         rep["asset_id"] = asset_id
+        cards = game_state(body)["cards"]
+        if asset_id and asset_id not in cards:
+            cards.append(asset_id)
     if fit is not None:
         rep["fit"] = fit
     if flip is not None:
@@ -242,3 +301,81 @@ def set_game_card(body: dict, *, rect=None, asset_id: str | None = None, fit: st
     if enabled is not None:
         d["enabled"] = bool(enabled)
     return d
+
+
+def remove_slot(body: dict, slot: int) -> None:
+    body["rois"] = [r for r in body.get("rois", []) if slot_number(r.get("id", "")) != slot]
+    g = game_state(body)
+    if g["active_slot"] == slot:
+        g["active_slot"] = min(game_slots(body), default=1)
+
+
+def next_free_slot(body: dict) -> int:
+    used = game_slots(body)
+    return next(n for n in range(1, len(used) + 2) if n not in used)
+
+
+def add_cards(body: dict, asset_ids: list[str]) -> None:
+    cards = game_state(body)["cards"]
+    cards.extend(a for a in asset_ids if a not in cards)
+
+
+def remove_card(body: dict, asset_id: str) -> None:
+    g = game_state(body)
+    g["cards"] = [a for a in g["cards"] if a != asset_id]
+    for d in game_slots(body).values():
+        if d.get("replacement", {}).get("asset_id") == asset_id:
+            d["replacement"]["asset_id"] = ""
+
+
+def cycle_card(body: dict, step: int, slot: int | None = None) -> str | None:
+    """Show the next (step=1) / previous (step=-1) card of the card list in a slot (default: active)."""
+    g = game_state(body)
+    slot = slot or g["active_slot"]
+    d = game_card_roi(body, slot)
+    cards = [a for a in g["cards"] if any(x.get("id") == a for x in body.get("assets", []))]
+    if d is None or not cards:
+        return None
+    cur = d.get("replacement", {}).get("asset_id")
+    i = cards.index(cur) if cur in cards else (-1 if step > 0 else 0)
+    new = cards[(i + step) % len(cards)]
+    set_game_card(body, slot=slot, asset_id=new, enabled=True)
+    return new
+
+
+def toggle_cards(body: dict) -> bool:
+    """Hide all card frames if any is shown, else show them all. Returns the new state."""
+    slots = game_slots(body)
+    on = not any(d.get("enabled", True) for d in slots.values())
+    for d in slots.values():
+        d["enabled"] = on
+    return on
+
+
+def save_layout(body: dict, name: str) -> None:
+    """Remember the current frames (geometry, card, options) under a game's name."""
+    name = name.strip()
+    if not name:
+        raise ValueError("layout name is empty")
+    slots = []
+    for n, d in game_slots(body).items():
+        rep = d.get("replacement", {})
+        slots.append({"slot": n, **{k: d.get(k) for k in SLOT_KEYS}, **{k: rep.get(k) for k in REP_KEYS}})
+    game_state(body)["layouts"][name] = {"slots": slots}
+
+
+def apply_layout(body: dict, name: str) -> None:
+    """Replace the current card frames with a saved layout."""
+    lay = game_state(body)["layouts"][name]
+    body["rois"] = [r for r in body.get("rois", []) if slot_number(r.get("id", "")) is None]
+    for s in lay["slots"]:
+        set_game_card(body, slot=int(s["slot"]), rect=(s["cx"], s["cy"], s["w"], s["h"], s.get("rotation", 0.0)),
+                      asset_id=s.get("asset_id") or "", fit=s.get("fit") or "fit", flip=bool(s.get("flip_h")),
+                      enabled=s.get("enabled", True))
+    g = game_state(body)
+    g["active_slot"] = min(game_slots(body), default=1)
+    g["last_layout"] = name
+
+
+def delete_layout(body: dict, name: str) -> None:
+    game_state(body)["layouts"].pop(name, None)

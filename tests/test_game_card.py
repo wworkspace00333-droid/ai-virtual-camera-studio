@@ -155,3 +155,105 @@ def test_frame_and_caption_drawn_over_the_markers():
     quad = cf.find_frame(fake_game(cf.grey_frame(W, H))[0], cal)
     assert quad is not None
     assert np.abs(quad[[0, 2]].ravel() - [fx0, fy0, fx1, fy1]).max() <= 5
+
+
+# ------------------------------------------------------------------ several frames, layouts, hotkeys, paste
+def body_with_cards(n=3):
+    from vcstudio.core.profiles import default_profile_body
+    b = default_profile_body()
+    b["assets"] = [{"id": f"a{i}", "name": f"c{i}", "file": f"c{i}.png", "kind": "image"} for i in range(n)]
+    cf.add_cards(b, [f"a{i}" for i in range(n)])
+    return b
+
+
+def test_slots_cycle_and_toggle():
+    b = body_with_cards(3)
+    cf.set_game_card(b, slot=1, rect=(0.3, 0.5, 0.2, 0.3, 0), asset_id="a0")
+    cf.set_game_card(b, slot=2, rect=(0.7, 0.5, 0.2, 0.3, 0), asset_id="a2")
+    assert list(cf.game_slots(b)) == [1, 2] and cf.next_free_slot(b) == 3
+    assert cf.cycle_card(b, 1) == "a1"                       # active slot 1: a0 -> a1
+    assert cf.cycle_card(b, 1, slot=2) == "a0"               # wraps around: a2 -> a0
+    assert cf.cycle_card(b, -1) == "a0"
+    assert cf.toggle_cards(b) is False and not any(d["enabled"] for d in cf.game_slots(b).values())
+    assert cf.toggle_cards(b) is True and all(d["enabled"] for d in cf.game_slots(b).values())
+    cf.remove_card(b, "a0")
+    assert cf.game_card_roi(b, 1)["replacement"]["asset_id"] == "" and "a0" not in cf.game_state(b)["cards"]
+    cf.remove_slot(b, 1)
+    assert list(cf.game_slots(b)) == [2] and cf.game_state(b)["active_slot"] == 2
+
+
+def test_layouts_per_game():
+    b = body_with_cards(2)
+    cf.set_game_card(b, slot=1, rect=(0.3, 0.5, 0.2, 0.3, 0), asset_id="a0", flip=True)
+    cf.save_layout(b, "Game A")
+    cf.remove_slot(b, 1)
+    cf.set_game_card(b, slot=1, rect=(0.5, 0.5, 0.1, 0.1, 0), asset_id="a1")
+    cf.set_game_card(b, slot=2, rect=(0.8, 0.5, 0.1, 0.1, 0), asset_id="a1")
+    cf.save_layout(b, "Game B")
+    cf.apply_layout(b, "Game A")
+    s = cf.game_slots(b)
+    assert list(s) == [1] and s[1]["cx"] == 0.3 and s[1]["replacement"]["flip_h"] is True
+    cf.apply_layout(b, "Game B")
+    assert list(cf.game_slots(b)) == [1, 2]
+    cf.delete_layout(b, "Game A")
+    assert list(cf.game_state(b)["layouts"]) == ["Game B"]
+    with pytest.raises(ValueError):
+        cf.save_layout(b, "  ")
+
+
+def two_frames_overlay(scr, box):
+    x, y, vw, vh = box
+    for fx0 in (x + vw // 8, x + vw // 2 + vw // 8):
+        cv2.rectangle(scr, (fx0, y + vh // 4), (fx0 + vw // 4, y + 3 * vh // 4), (255, 255, 255), 3)
+
+
+def test_find_two_frames_in_reading_order():
+    scr, box = game_screen(cf.calibration_frame(W, H))
+    cal = cf.calibrate(scr, (W, H))
+    frames = cf.find_frames(game_screen(cf.grey_frame(W, H), overlay=two_frames_overlay)[0], cal)
+    assert len(frames) == 2 and frames[0][0, 0] < frames[1][0, 0]
+
+
+def test_card_hotkeys_in_main_window(qtbot, paths):
+    from vcstudio.app.application import AppContext
+    from vcstudio.ui.main_window import MainWindow
+    ctx = AppContext(paths, configure_logging=False)
+    try:
+        w = MainWindow(ctx)
+        qtbot.addWidget(w)
+        b = body_with_cards(2)
+        cf.set_game_card(b, slot=1, rect=(0.3, 0.5, 0.2, 0.3, 0), asset_id="a0")
+        ctx.update_active_profile(lambda body: body.update({"assets": b["assets"], "rois": b["rois"], "game": b["game"]}))
+        assert {"card_next", "card_prev", "card_toggle"} <= set(ctx.settings.get("hotkeys"))
+        w.on_action("card_next")
+        assert cf.game_card_roi(ctx.profiles.active()["body"])["replacement"]["asset_id"] == "a1"
+        w.on_action("card_toggle")
+        assert cf.game_card_roi(ctx.profiles.active()["body"])["enabled"] is False
+        w.on_action("card_toggle")
+        assert any(r.id == cf.GAME_CARD_ID and r.enabled for r in ctx.rois.rois())
+    finally:
+        ctx.shutdown()
+
+
+def test_paste_and_drop_add_cards(qtbot, paths, tmp_path):
+    from PySide6.QtCore import QMimeData, QUrl
+    from PySide6.QtGui import QImage
+    from PySide6.QtWidgets import QApplication
+    from vcstudio.app.application import AppContext
+    from vcstudio.ui import game_card_dialog as gd
+    ctx = AppContext(paths, configure_logging=False)
+    try:
+        dlg = gd.GameCardDialog(ctx)
+        qtbot.addWidget(dlg)
+        img = QImage(60, 90, QImage.Format_RGB32); img.fill(0xff2040c0)
+        QApplication.clipboard().setImage(img)
+        dlg.paste()
+        f = tmp_path / "dropped.png"
+        cv2.imwrite(str(f), np.zeros((90, 60, 3), np.uint8))
+        md = QMimeData(); md.setUrls([QUrl.fromLocalFile(str(f))])
+        dlg.add_cards(gd._paths_from_mime(md))
+        dlg.add_cards([str(tmp_path / "notes.txt")])          # not an image: reported, not added
+        assert dlg.cards.count() == 2
+        assert len(cf.game_state(ctx.profiles.active()["body"])["cards"]) == 2
+    finally:
+        ctx.shutdown()

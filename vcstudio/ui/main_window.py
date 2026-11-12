@@ -189,11 +189,27 @@ class MainWindow(QMainWindow):
                 self.ctx.profiles.switch(self.ctx.profiles.next_name())
             except ProfileError as e:
                 log.error("switch profile failed: %s", e)
+        elif aid in ("card_next", "card_prev", "card_toggle"):
+            from vcstudio.game import cardframe as cf
+            if aid == "card_toggle":
+                self.ctx.update_active_profile(cf.toggle_cards)
+            else:
+                self.ctx.update_active_profile(lambda b: cf.cycle_card(b, 1 if aid == "card_next" else -1))
+            if not pipe.replacement_enabled:
+                pipe.set_replacement_enabled(True)
+            self.card_changed()
         elif aid == "toggle_preview":
             if self.stack.currentWidget() is self.pages[self.page_keys().index("preview")].widget:
                 self.goto("dashboard")
             else:
                 self.goto("preview")
+
+    def card_changed(self) -> None:
+        """Refresh an open Card for a game window after a hotkey changed the cards."""
+        prev = self.pages[self.page_keys().index("preview")]
+        dlg = getattr(prev, "_card_dialog", None)
+        if dlg is not None:
+            dlg.refresh()
 
     def closeEvent(self, e):  # noqa: N802
         self.timer.stop()
