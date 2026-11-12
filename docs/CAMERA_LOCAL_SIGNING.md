@@ -46,7 +46,7 @@ Mac. Для цели «проверить приложение на своём M
 | Вариант | Почему не подходит |
 |---|---|
 | Самоподписанный сертификат | ограниченные права требуют профиль от Apple (опыт 3) |
-| Бесплатный Apple ID (Personal Team) в Xcode | Xcode не даёт личным командам возможность System Extension — профиль с этим правом не выпускается (по документации Apple и сообщению Xcode; здесь не проверялось — на этом Mac нет Apple ID в Xcode) |
+| Бесплатный Apple ID (Personal Team) в Xcode | **проверено 2026-11-12**: `VCS_TEAM_ID=<personal team> scripts/build_camera.sh --no-install` → `error: Cannot create a Mac App Development provisioning profile for "com.aivcstudio.app". Personal development teams, including "…", do not support the System Extension capability.` Apple не выпускает бесплатным командам профиль с этим правом |
 | `systemextensionsctl developer on` | при включённом SIP не работает (см. таблицу состояния); и даже включённый режим разработчика лишь разрешает расширения вне `/Applications` — проверку подписи и прав он не отменяет |
 | Активировать расширение без нашего хоста | у `systemextensionsctl` нет команды установки; активирует только приложение с этим правом через `OSSystemExtensionRequest` |
 | Старый DAL-плагин вместо расширения | DAL устарел и на современных macOS сторонними программами не загружается; это была бы переделка камеры, а не установка |
