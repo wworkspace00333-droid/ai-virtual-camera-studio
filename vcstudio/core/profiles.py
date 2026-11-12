@@ -30,7 +30,7 @@ def default_profile_body() -> dict[str, Any]:
     return {
         "ai": {
             "detector_model": "auto",           # auto => smallest model (largest in Maximum Quality mode)
-            "face_detection": None,             # "vision" => Apple Vision face rectangles (detection only)
+            "face_detection": "vision",         # Apple Vision face rectangles (detection only; ~9 ms); None = off
             "segmentation_model": None,         # optional, loaded only if a ROI needs masks
             "compute_units": "all",             # all | cpu_and_ne | cpu_and_gpu | cpu_only
             "enabled": True,

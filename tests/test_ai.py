@@ -278,3 +278,9 @@ def test_segmentation_masks_follow_tracks_and_drive_object_replacement(pipeline,
     x0, y0, x1, y1 = (int(v) for v in (o.x0, o.y0, o.x1, o.y1))
     changed = (np.abs(out[y0:y1, x0:x1].astype(int) - img[y0:y1, x0:x1].astype(int)).sum(-1) > 30).mean()
     assert 0.3 < changed < 0.9          # silhouette, not the whole box
+
+
+def test_face_detection_on_by_default():
+    # COCO has no "face" class: without Vision faces a close-up shows only a frame-wide "person" box.
+    from vcstudio.core.profiles import default_profile_body
+    assert DetectionConfig.from_profile(default_profile_body()).face_detection is True
