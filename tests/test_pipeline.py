@@ -280,3 +280,30 @@ def test_live_end_to_end_through_cmio_camera(tmp_path):
                                  "frames_with_replacement", "ai_model", "ai_fps", "error")})
     assert r["ok"], r.get("error")
     assert r["client_distinct_fps"] >= 50 and r["client_resolution"] == "1920x1080"
+
+
+def test_camera_output_pixel_format_reaches_the_sender(monkeypatch):
+    """Settings > Pixel format used to be shown but ignored; it now selects what the camera receives."""
+    import vcstudio.camera.output as out
+    from vcstudio.core.video_pipeline import CameraOutputController
+    made = []
+
+    class Fake:
+        def __init__(self, device, sink, pixel_format="BGRA"):
+            made.append(pixel_format)
+
+        def open(self):
+            pass
+
+        def send(self, pb, pts):
+            return True
+
+        def close(self):
+            pass
+    monkeypatch.setattr(out, "VirtualCameraOutput", Fake)
+    c = CameraOutputController("OBS Virtual Camera", "OBS Camera Extension Stream Sink", True, "NV12")
+    assert c.send(object(), 0.0) is True and made == ["NV12"]
+    c.configure("OBS Virtual Camera", "OBS Camera Extension Stream Sink", True, "BGRA")   # change -> reopen
+    c.send(object(), 0.0)
+    assert made == ["NV12", "BGRA"]
+    assert out.PIXEL_FORMATS["NV12"] == int.from_bytes(b"420v", "big") and out.PIXEL_FORMATS["BGRA"] == 0

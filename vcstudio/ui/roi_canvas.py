@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import math
 
-from vcstudio.i18n import tr
+from vcstudio.i18n import region_name, tr
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QBrush, QColor, QFont, QPainter, QPainterPath, QPen, QPolygonF
 
@@ -361,7 +361,7 @@ class RoiCanvas(VideoView):
             p.setPen(pen)
             p.setBrush(QColor(col.red(), col.green(), col.blue(), 40))
             p.drawPolygon(QPolygonF([self.px_to_widget(x, y) for x, y in reg.polygon]))
-            tag = f"{reg.roi_name} · #{reg.track_id} {tr(reg.label)}"
+            tag = f"{region_name(reg.roi_name)} · #{reg.track_id} {tr(reg.label)}"
             tl = self.px_to_widget(reg.bbox[0], reg.bbox[1])
             p.fillRect(QRectF(tl.x(), tl.y(), p.fontMetrics().horizontalAdvance(tag) + 8, 18), col)
             p.setPen(QColor("black"))
@@ -378,7 +378,7 @@ class RoiCanvas(VideoView):
             p.setPen(QPen(col if r.enabled else QColor(theme.MUTED), 3 if sel else 2,
                           Qt.SolidLine if r.enabled else Qt.DotLine))
             p.drawPolygon(poly)
-            label = r.name + ("" if r.enabled else " (off)") + (f" · {r.mode}" if r.mode != "manual" else "")
+            label = region_name(r.name) + ("" if r.enabled else " (" + tr("off") + ")") + (f" · {tr(r.mode)}" if r.mode != "manual" else "")
             br = poly.boundingRect()
             p.setPen(QColor("white"))
             p.drawText(QRectF(br.x() + 6, br.y() + 4, 300, 18), Qt.AlignLeft | Qt.AlignVCenter, label)

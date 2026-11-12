@@ -61,3 +61,15 @@ def language() -> str:
 def tr(text: str, **kw) -> str:
     out = _table(_lang).get(text, text) if _lang != "en" else text
     return out.format(**kw) if kw else out
+
+
+def region_name(name: str) -> str:
+    """Display name of a region: the app's own regions ("Hide face", "Game card 2") are stored in English in
+    profiles and shown in the interface language; names the user typed are shown as they are."""
+    import re
+    if name == "Hide face":
+        return tr("Hide face")
+    m = re.fullmatch(r"Game card (\d+)", name)
+    if m:
+        return tr("Game card {n}", n=m.group(1))
+    return name

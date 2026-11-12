@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from PySide6.QtGui import QKeySequence
-from PySide6.QtWidgets import (QComboBox, QFormLayout, QHBoxLayout, QKeySequenceEdit, QLabel, QMessageBox,
+from PySide6.QtWidgets import (QComboBox, QFormLayout, QHBoxLayout, QKeySequenceEdit, QLabel, QLineEdit, QMessageBox,
                                QPushButton, QSpinBox, QCheckBox)
 
 from vcstudio.core.config import SettingsError
@@ -102,6 +102,8 @@ class SettingsPage:
         bindings = s.get("hotkeys")
         for spec in ACTION_SPECS:
             e = QKeySequenceEdit(QKeySequence(bindings.get(spec.id, "")))
+            for le in e.findChildren(QLineEdit):          # Qt's built-in "Press shortcut" placeholder
+                le.setPlaceholderText(tr("Press shortcut"))
             e.setMaximumSequenceLength(1) if hasattr(e, "setMaximumSequenceLength") else None
             label = tr(spec.label)
             f3.addRow(label, e)

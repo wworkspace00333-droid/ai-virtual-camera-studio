@@ -18,7 +18,7 @@ RU: dict[str, str] = {
     # ---- common words, units, states
     "ms": "мс", " ms": " мс", "s": "с", " s": " с", "B": "Б", "KB": "КБ", "MB": "МБ", " MB": " МБ", "GB": "ГБ", "TB": "ТБ", " px": " пкс",
     " px σ": " пкс σ", " fps": " кадр/с", " FPS": " кадр/с", "fps": "кадр/с",
-    "Yes": "Да", "none": "нет", "— none —": "— нет —", "on": "вкл", "off": "выкл", "active": "активный",
+    "Yes": "Да", "none": "нет", "— none —": "— нет —", "on": "вкл", "off": "выкл.", "active": "активный",
     "available": "доступен", "unavailable": "недоступен", "missing": "файл не найден", "image": "изображение",
     "video": "видео", "detected": "обнаружен", "Enabled": "Включено", "Name": "Название", "Mode": "Режим",
     "State": "Состояние", "Status": "Статус", "Model": "Модель", "Size": "Размер", "Class": "Класс",
@@ -454,8 +454,7 @@ RU: dict[str, str] = {
     "OBS Virtual Camera (no Apple Developer account needed)": "OBS Virtual Camera (аккаунт Apple Developer не нужен)",
     "Other apps select “AI Virtual Camera”. Needs the signed camera extension installed.":
         "В других приложениях выбирайте «AI Virtual Camera». Нужно установленное подписанное расширение камеры.",
-    "Other apps select “OBS Virtual Camera”. Keep OBS's own Start Virtual Camera off, and take input with Direct OBS frame transfer (the vcstudio-obs plugin), not from OBS Virtual Camera.":
-        "В других приложениях выбирайте «OBS Virtual Camera». В самом OBS не нажимайте Start Virtual Camera, а вход берите через прямую передачу кадров (плагин vcstudio-obs), а не из OBS Virtual Camera.",
+    "Other apps select “OBS Virtual Camera”. Keep OBS's own Start Virtual Camera off, and take input with Direct OBS frame transfer (the vcstudio-obs plugin), not from OBS Virtual Camera.": "В других приложениях выбирайте «OBS Virtual Camera». В самом OBS не нажимайте «Запустить виртуальную камеру», а вход берите через прямую передачу кадров (плагин vcstudio-obs), а не из OBS Virtual Camera.",
     "Custom: {dev} / {sink}": "Своя: {dev} / {sink}",
     "Set in settings.json (output.camera_device / output.camera_sink).": "Задаётся в settings.json (output.camera_device / output.camera_sink).",
     "Switch the input to Direct OBS frame transfer on the Input page.": "Переключите вход на прямую передачу кадров из OBS на странице «Вход».",
@@ -669,4 +668,8 @@ RU: dict[str, str] = {
     "the check did not write a report": "проверка не записала отчёт",
     "Your OBS video was not checked: OBS is not sharing frames (open OBS with the vcstudio-obs plugin).": "Ваше видео из OBS не проверено: OBS не передаёт кадры (откройте OBS с плагином vcstudio-obs).",
     "Reports: {path}": "Отчёты: {path}",
+    "Bundle ID": "Идентификатор пакета",
+    "Press shortcut": "Нажмите сочетание клавиш",
+    "Track objects": "Отслеживать объекты",
+    "Game card {n}": "Карточка {n}",
 }

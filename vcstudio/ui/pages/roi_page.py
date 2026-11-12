@@ -11,7 +11,7 @@ from vcstudio.core.frame import host_time_s
 from vcstudio.roi.model import MODES, ROI, ROIError
 from vcstudio.ui.roi_canvas import MODE_COLORS, RoiCanvas
 from vcstudio.ui.widgets import Card
-from vcstudio.i18n import tr
+from vcstudio.i18n import region_name, tr
 
 log = logging.getLogger(__name__)
 
@@ -47,16 +47,17 @@ class ROIPage:
         self.add_auto = QPushButton(tr("+ Automatic AI region"))
         bar.addWidget(self.add_auto)
         bar.addStretch()
-        self.hint = QLabel(); self.hint.setObjectName("muted")
-        bar.addWidget(self.hint)
         left.addLayout(bar)
+        # own line, wrapped: in the button row the long Russian hint made the page wider than the window
+        self.hint = QLabel(); self.hint.setObjectName("muted"); self.hint.setWordWrap(True)
+        left.addWidget(self.hint)
         self.canvas = RoiCanvas()
         self.canvas.setMinimumSize(640, 360)
         feeder.add_view(self.canvas)
         left.addWidget(self.canvas, 1)
         legend = QLabel(" · ".join(f"<span style='color:{MODE_COLORS[m].name()}'>■</span> {tr(m)}" for m in MODES) +
                         " · " + tr("dashed = live regions resolved from tracked objects"))
-        legend.setObjectName("muted")
+        legend.setObjectName("muted"); legend.setWordWrap(True)
         left.addWidget(legend)
         outer.addLayout(left, 3)
 
@@ -195,7 +196,7 @@ class ROIPage:
         self.list.clear()
         sel_row = -1
         for i, r in enumerate(self._ordered()):
-            it = QListWidgetItem(f"{r.name}   [{tr(r.mode)}, {tr(r.kind if r.mode != 'auto' else 'objects')}]")
+            it = QListWidgetItem(f"{region_name(r.name)}   [{tr(r.mode)}, {tr(r.kind if r.mode != 'auto' else 'objects')}]")
             it.setData(Qt.UserRole, r.id)
             it.setFlags(it.flags() | Qt.ItemIsUserCheckable)
             it.setCheckState(Qt.Checked if r.enabled else Qt.Unchecked)
@@ -295,7 +296,7 @@ class ROIPage:
             w.blockSignals(True)
         if r is not None:
             fw, fh = self.canvas.frame_size
-            self.name.setText(r.name)
+            self.name.setText(region_name(r.name))
             self.mode.setCurrentIndex(self.mode.findData(r.mode))
             self.enabled.setChecked(r.enabled)
             self.priority.setValue(r.priority)
@@ -333,7 +334,9 @@ class ROIPage:
             return
         fw, fh = self.canvas.frame_size
         before = r.to_dict()
-        r.name = self.name.text().strip() or r.name
+        new = self.name.text().strip()
+        if new and new != region_name(r.name):   # unchanged shown name keeps the stored (English) built-in name
+            r.name = new
         r.mode = self.mode.currentData()
         r.enabled = self.enabled.isChecked()
         r.priority = self.priority.value()

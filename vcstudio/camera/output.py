@@ -69,6 +69,7 @@ def _lib():
         lib.vcs_cam_close.argtypes = [ctypes.c_void_p]
         lib.vcs_cam_list_devices.argtypes = [ctypes.c_char_p, ctypes.c_int32]
         lib.vcs_cam_list_streams.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_int32]
+        lib.vcs_cam_set_format.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
         lib._cam_ready = True
     return lib
 
@@ -85,9 +86,13 @@ def list_streams(device: str) -> list[str]:
     return [s for s in buf.value.decode().split("\n") if s] if n > 0 else []
 
 
+PIXEL_FORMATS = {"BGRA": 0, "NV12": int.from_bytes(b"420v", "big")}   # 0 = send frames as rendered (BGRA)
+
+
 class VirtualCameraOutput:
-    def __init__(self, device: str = CAMERA_NAME, sink: str = SINK_NAME):
+    def __init__(self, device: str = CAMERA_NAME, sink: str = SINK_NAME, pixel_format: str = "BGRA"):
         self.device, self.sink = device, sink
+        self.pixel_format = pixel_format if pixel_format in PIXEL_FORMATS else "BGRA"
         self._h = None
 
     @property
@@ -102,7 +107,8 @@ class VirtualCameraOutput:
         if not h:
             raise CameraOutputError(status.value, f"{self.device}: {OPEN_ERRORS.get(status.value, status.value)}")
         self._h = h
-        log.info("Virtual camera output opened: %s / %s", self.device, self.sink)
+        _lib().vcs_cam_set_format(h, PIXEL_FORMATS[self.pixel_format])
+        log.info("Virtual camera output opened: %s / %s (%s)", self.device, self.sink, self.pixel_format)
 
     def send(self, pixel_buffer, pts_seconds: float) -> bool:
         """True if enqueued, False if dropped because the extension's queue was full."""

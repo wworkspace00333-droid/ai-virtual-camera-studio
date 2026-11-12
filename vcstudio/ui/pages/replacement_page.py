@@ -15,7 +15,7 @@ from vcstudio.replacement.spec import EFFECTS, FITS, MODES, VIDEO_SYNC, Replacem
 from vcstudio.roi.model import rois_from_profile
 from vcstudio.ui.video_view import VideoView
 from vcstudio.ui.widgets import Card, page_scaffold
-from vcstudio.i18n import tr
+from vcstudio.i18n import region_name, tr
 
 log = logging.getLogger(__name__)
 PREVIEW_FPS = 15
@@ -114,7 +114,7 @@ class ReplacementPage:
             self.v_sync.addItem(tr(v), k)
         self.v_max = QComboBox()
         for v in (640, 960, 1280, 1920, 3840):
-            self.v_max.addItem(f"{v} px", v)
+            self.v_max.addItem(f"{v}" + tr(" px"), v)
         r_end = QHBoxLayout(); r_end.addWidget(self.v_loop); r_end.addWidget(QLabel(tr("At end:"))); r_end.addWidget(self.v_end)
         vf.addRow(tr("Playback"), r_end); vf.addRow(tr("Start offset"), self.v_off); vf.addRow(tr("Speed"), self.v_rate)
         vf.addRow(tr("Frame-rate conversion"), self.v_interp); vf.addRow(tr("Synchronisation"), self.v_sync)
@@ -222,7 +222,7 @@ class ReplacementPage:
         self.roi.blockSignals(True)
         self.roi.clear()
         for r in sorted(rois, key=lambda r: (-r.priority, r.name)):
-            self.roi.addItem(f"{r.name}  [{tr(r.mode)}]", r.id)
+            self.roi.addItem(f"{region_name(r.name)}  [{tr(r.mode)}]", r.id)
         idx = self.roi.findData(cur) if cur else 0
         self.roi.setCurrentIndex(max(0, idx))
         self.roi.blockSignals(False)

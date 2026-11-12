@@ -55,7 +55,8 @@ class AppContext:
         from vcstudio.core.video_pipeline import CameraOutputController, VideoPipeline
         from vcstudio.core.watchdog import Watchdog
         o = self.settings.get("output")
-        self.camera_out = CameraOutputController(o["camera_device"], o["camera_sink"], o["camera_enabled"])
+        self.camera_out = CameraOutputController(o["camera_device"], o["camera_sink"], o["camera_enabled"],
+                                                 o["pixel_format"])
         self.pipeline = VideoPipeline(self.capture, self.ai, self.rois, self.replacement, self.camera_out,
                                       event_sink=self.db.log_event)
         self.watchdog = Watchdog(self)
@@ -93,7 +94,7 @@ class AppContext:
             self.apply_ai_config()
         if key.startswith("output"):
             o = self.settings.get("output")
-            self.camera_out.configure(o["camera_device"], o["camera_sink"], o["camera_enabled"])
+            self.camera_out.configure(o["camera_device"], o["camera_sink"], o["camera_enabled"], o["pixel_format"])
         if key.startswith("processing"):
             used = self.replacement.compositor.set_backend(self.settings.get("processing.compositor"))
             log.info("Compositor backend: %s", used)

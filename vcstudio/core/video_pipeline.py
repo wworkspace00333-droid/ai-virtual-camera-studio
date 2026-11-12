@@ -64,17 +64,19 @@ class PipelineStats:
 class CameraOutputController:
     """Owns the CMIO sink connection: lazy open, retry with backoff, reconnect after errors."""
 
-    def __init__(self, device: str, sink: str, enabled: bool = True):
+    def __init__(self, device: str, sink: str, enabled: bool = True, pixel_format: str = "BGRA"):
         self.device, self.sink, self.enabled = device, sink, enabled
+        self.pixel_format = pixel_format
         self._out = None
         self._next_try = 0.0
         self.state = "disabled" if not enabled else "not_installed"
         self.error = ""
 
-    def configure(self, device: str, sink: str, enabled: bool) -> None:
-        if (device, sink, enabled) != (self.device, self.sink, self.enabled):
+    def configure(self, device: str, sink: str, enabled: bool, pixel_format: str | None = None) -> None:
+        pixel_format = pixel_format or self.pixel_format
+        if (device, sink, enabled, pixel_format) != (self.device, self.sink, self.enabled, self.pixel_format):
             self.close()
-            self.device, self.sink, self.enabled = device, sink, enabled
+            self.device, self.sink, self.enabled, self.pixel_format = device, sink, enabled, pixel_format
             self._next_try = 0.0
             self.state = "disabled" if not enabled else "not_installed"
 
@@ -87,7 +89,7 @@ class CameraOutputController:
                 return None
             from vcstudio.camera.output import CameraOutputError, VirtualCameraOutput
             try:
-                out = VirtualCameraOutput(self.device, self.sink)
+                out = VirtualCameraOutput(self.device, self.sink, self.pixel_format)
                 out.open()
                 self._out = out
                 self.state, self.error = "connected", ""

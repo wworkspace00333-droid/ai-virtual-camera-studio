@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import signal
 import sys
+from pathlib import Path
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -16,7 +17,6 @@ def main(argv: list[str] | None = None) -> int:
     if "--leak-bisect" in argv or "--run-script" in argv:
         # dev: run a scripts/*.py tool inside the app bundle (it needs the bundle's camera permission)
         import runpy
-        from pathlib import Path
         from vcstudio.core.resources import scripts_dir
         scripts = scripts_dir()
         if "--leak-bisect" in argv:
@@ -40,7 +40,8 @@ def main(argv: list[str] | None = None) -> int:
         i = argv.index("--pipeline-e2e-test")
         opt = lambda k, d: argv[argv.index(k) + 1] if k in argv else d
         return pipeline_e2e_selftest(argv[i + 1], float(opt("--seconds", 8)), opt("--device", "AI Virtual Camera"),
-                                     opt("--sink", "AI Virtual Camera Input"), opt("--input", None))
+                                     opt("--sink", "AI Virtual Camera Input"), opt("--input", None),
+                                     opt("--pixel-format", None))
     if "--self-check" in argv:
         from vcstudio.app.selftest import bundle_selfcheck
         i = argv.index("--self-check")

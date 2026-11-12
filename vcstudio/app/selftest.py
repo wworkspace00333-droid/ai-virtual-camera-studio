@@ -167,7 +167,8 @@ def camera_loopback_selftest(out_path: str, seconds: float = 6.0, device: str = 
 
 
 def pipeline_e2e_selftest(out_path: str, seconds: float = 8.0, out_device: str = "AI Virtual Camera",
-                          out_sink: str = "AI Virtual Camera Input", in_device: str | None = None) -> int:
+                          out_sink: str = "AI Virtual Camera Input", in_device: str | None = None,
+                          pixel_format: str | None = None) -> int:
     """Full chain: input -> AI detection -> tracking -> object replacement -> Metal -> CMIO camera -> client capture.
 
     Input: `in_device` (e.g. OBS Virtual Camera) or, by default, a synthetic 1080p60 bus scene whose bottom rows
@@ -217,6 +218,9 @@ def pipeline_e2e_selftest(out_path: str, seconds: float = 8.0, out_device: str =
                         self._stop.wait(d)
         ctx.settings.set("output.camera_device", out_device)
         ctx.settings.set("output.camera_sink", out_sink)
+        if pixel_format:
+            ctx.settings.set("output.pixel_format", pixel_format)
+        result["pixel_format"] = ctx.settings.get("output.pixel_format")
         people = ROI(name="People", mode="auto", classes=["person"], padding=0.0,
                      replacement=ReplacementSpec(enabled=True, mode="object", asset_id="", background=[255, 0, 255, 255]).to_dict())
         # object mode needs an asset: use a fully transparent 2x2 PNG so only the magenta fill shows

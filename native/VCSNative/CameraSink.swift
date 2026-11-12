@@ -6,6 +6,7 @@ import CoreMedia
 import CoreMediaIO
 import CoreVideo
 import Foundation
+import VideoToolbox
 
 final class VCSCameraSink {
     let deviceID: CMIOObjectID
@@ -15,6 +16,12 @@ final class VCSCameraSink {
     var sent: Int64 = 0
     var dropped: Int64 = 0
     var started = false
+    // Output pixel format sent to the camera. 0 = as rendered (BGRA). '420v' (NV12, video range) is what
+    // Chrome asks every camera for: it ignores BGRA camera formats and received no frames from a BGRA feed.
+    var outFormat: OSType = 0
+    var transfer: VTPixelTransferSession?
+    var pool: CVPixelBufferPool?
+    var poolKey: (Int, Int, OSType) = (0, 0, 0)
 
     init(deviceID: CMIOObjectID, streamID: CMIOStreamID) {
         self.deviceID = deviceID
@@ -98,14 +105,61 @@ public func vcs_cam_send(_ h: UnsafeMutableRawPointer?, _ pbPtr: UnsafeMutableRa
     return autoreleasepool { vcs_cam_send_impl(h, pbPtr, ptsSeconds) }
 }
 
+/// Choose the pixel format sent to the camera: 0 = as rendered, or a CoreVideo format such as '420v'.
+@_cdecl("vcs_cam_set_format")
+public func vcs_cam_set_format(_ h: UnsafeMutableRawPointer?, _ fourcc: UInt32) {
+    guard let h = h else { return }
+    let sink = Unmanaged<VCSCameraSink>.fromOpaque(h).takeUnretainedValue()
+    sink.outFormat = fourcc
+    sink.formatDesc = nil
+}
+
+/// GPU conversion (VideoToolbox) of a rendered frame into the camera's output format; nil on failure.
+private func converted(_ sink: VCSCameraSink, _ src: CVPixelBuffer) -> CVPixelBuffer? {
+    let w = CVPixelBufferGetWidth(src), h = CVPixelBufferGetHeight(src), f = sink.outFormat
+    if sink.pool == nil || sink.poolKey != (w, h, f) {
+        let attrs: [String: Any] = [kCVPixelBufferPixelFormatTypeKey as String: f,
+                                    kCVPixelBufferWidthKey as String: w, kCVPixelBufferHeightKey as String: h,
+                                    kCVPixelBufferIOSurfacePropertiesKey as String: [:]]
+        var p: CVPixelBufferPool?
+        CVPixelBufferPoolCreate(kCFAllocatorDefault, [kCVPixelBufferPoolMinimumBufferCountKey: 6] as CFDictionary,
+                                attrs as CFDictionary, &p)
+        sink.pool = p
+        sink.poolKey = (w, h, f)
+    }
+    if sink.transfer == nil {
+        var t: VTPixelTransferSession?
+        VTPixelTransferSessionCreate(allocator: kCFAllocatorDefault, pixelTransferSessionOut: &t)
+        if let t = t {
+            VTSessionSetProperty(t, key: kVTPixelTransferPropertyKey_DestinationYCbCrMatrix,
+                                 value: kCVImageBufferYCbCrMatrix_ITU_R_709_2)
+            VTSessionSetProperty(t, key: kVTPixelTransferPropertyKey_DestinationColorPrimaries,
+                                 value: kCVImageBufferColorPrimaries_ITU_R_709_2)
+            VTSessionSetProperty(t, key: kVTPixelTransferPropertyKey_DestinationTransferFunction,
+                                 value: kCVImageBufferTransferFunction_ITU_R_709_2)
+        }
+        sink.transfer = t
+    }
+    guard let pool = sink.pool, let t = sink.transfer else { return nil }
+    var out: CVPixelBuffer?
+    guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &out) == kCVReturnSuccess, let o = out,
+          VTPixelTransferSessionTransferImage(t, from: src, to: o) == noErr else { return nil }
+    return o
+}
+
 func vcs_cam_send_impl(_ h: UnsafeMutableRawPointer?, _ pbPtr: UnsafeMutableRawPointer?, _ ptsSeconds: Double) -> Int32 {
     guard let h = h, let pbPtr = pbPtr else { return -1 }
     let sink = Unmanaged<VCSCameraSink>.fromOpaque(h).takeUnretainedValue()
     guard let queue = sink.queue else { return -2 }
-    let pb = Unmanaged<CVPixelBuffer>.fromOpaque(pbPtr).takeUnretainedValue()
+    let rendered = Unmanaged<CVPixelBuffer>.fromOpaque(pbPtr).takeUnretainedValue()
     if CMSimpleQueueGetCount(queue) >= CMSimpleQueueGetCapacity(queue) {
         sink.dropped += 1
         return 1
+    }
+    var pb = rendered
+    if sink.outFormat != 0 && CVPixelBufferGetPixelFormatType(rendered) != sink.outFormat {
+        guard let c = converted(sink, rendered) else { return -5 }
+        pb = c
     }
     if sink.formatDesc == nil || !CMVideoFormatDescriptionMatchesImageBuffer(sink.formatDesc!, imageBuffer: pb) {
         var fd: CMFormatDescription?

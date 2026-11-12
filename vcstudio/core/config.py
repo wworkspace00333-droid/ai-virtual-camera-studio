@@ -77,7 +77,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "width": 1920,
         "height": 1080,
         "fps": 60,
-        "pixel_format": "BGRA",  # BGRA | NV12
+        "pixel_format": "NV12",  # camera output: NV12 (420v, half the bytes; 0 drops vs ~2% with BGRA into OBS Virtual Camera) | BGRA
         "camera_enabled": True,
         "camera_device": "AI Virtual Camera",          # advanced: CMIO device that receives frames
         "camera_sink": "AI Virtual Camera Input",

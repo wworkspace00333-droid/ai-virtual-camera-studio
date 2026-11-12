@@ -184,7 +184,7 @@ class AIEnginePage:
         for name, info in avail.items():
             if info.task == "detect":
                 own = " · " + tr("imported") if info.origin == "user" else ""
-                self.model.addItem(f"{name} ({info.size_mb} MB){own}", name)
+                self.model.addItem(f"{name} ({info.size_mb}" + tr(" MB") + f"){own}", name)
         idx = self.model.findData(ai.get("detector_model", "auto"))
         self.model.setCurrentIndex(max(0, idx))
         self.cu.setCurrentIndex(max(0, self.cu.findData(ai.get("compute_units", "all"))))
