@@ -30,7 +30,8 @@ def metal_info() -> dict[str, Any]:
 
 def coreml_info() -> dict[str, Any]:
     try:
-        import CoreML  # type: ignore  # noqa: F401
+        import importlib
+        importlib.import_module("CoreML")
         return {"available": True}
     except Exception as e:
         return {"available": False, "error": str(e)}

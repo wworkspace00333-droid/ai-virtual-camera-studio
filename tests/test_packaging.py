@@ -65,3 +65,10 @@ def test_built_bundle_selfcheck(tmp_path):
                        capture_output=True, text=True, timeout=300, env=env, cwd=tmp_path)
     assert r.returncode == 0, r.stdout[-3000:] + r.stderr[-3000:]
     assert "OK:" in r.stdout
+
+
+def test_camera_extension_version_matches_app():
+    import re
+    import vcstudio
+    yml = (Path(__file__).resolve().parents[1] / "native" / "project.yml").read_text()
+    assert re.search(r'MARKETING_VERSION: "([^"]+)"', yml).group(1) == vcstudio.__version__

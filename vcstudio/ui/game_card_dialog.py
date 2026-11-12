@@ -513,7 +513,7 @@ class GameCardDialog(QDialog):
                                    "picture below.") + note)
             self.refresh()
             return
-        cal, cards = self.cal, None
+        cal = self.cal
         rects = [cf.frame_to_rect(cal, q) for q in frames]
 
         def mut(b):

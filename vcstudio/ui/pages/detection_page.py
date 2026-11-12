@@ -3,7 +3,7 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (QButtonGroup, QHeaderView, QCheckBox, QDoubleSpinBox, QFormLayout, QHBoxLayout, QLabel, QLineEdit,
                                QPushButton, QRadioButton, QSlider, QSpinBox, QTableWidget, QTableWidgetItem, QTreeWidget,
-                               QTreeWidgetItem, QVBoxLayout)
+                               QTreeWidgetItem)
 
 from vcstudio.ai.labels import FACE, GROUPS, group_of
 from vcstudio.core.config import PERFORMANCE_MODES

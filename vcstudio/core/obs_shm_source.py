@@ -11,7 +11,6 @@ from __future__ import annotations
 import ctypes
 import logging
 import threading
-from pathlib import Path
 
 from vcstudio.core.frame import Frame, host_time_s
 from vcstudio.core.video_capture import CaptureError, CaptureSource

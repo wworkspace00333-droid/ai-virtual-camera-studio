@@ -39,6 +39,7 @@ class CoreMLDetector:
         self._req.setImageCropAndScaleOption_(Vision.VNImageCropAndScaleOptionScaleFit)
         self._thresholds: tuple[float, float] | None = None
         self.class_names = loaded.info.classes
+        self._labels = loaded.info.label_map()      # model's own names -> names used by the app (imported models)
 
     def _set_thresholds(self, conf: float, iou: float) -> None:
         if self._thresholds == (conf, iou):
@@ -75,6 +76,7 @@ class CoreMLDetector:
                 continue
             top = labels[0]
             name = str(top.identifier())
+            name = self._labels.get(name, name)
             x0, y0, x1, y1 = _to_pixels(o.boundingBox(), frame.width, frame.height)
             # observation.confidence() is the detection score; label confidences are normalised
             # across labels by Vision (always ~1.0 for single-label NMS output).

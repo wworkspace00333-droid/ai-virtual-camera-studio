@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (QComboBox, QFormLayout, QHBoxLayout, QKeySequence
                                QPushButton, QSpinBox, QCheckBox)
 
 from vcstudio.core.config import SettingsError
-from vcstudio.ui.actions import ACTION_SPECS, CURRENT_STAGE
+from vcstudio.ui.actions import ACTION_SPECS
 from vcstudio.ui.widgets import Card, page_scaffold
 from vcstudio.i18n import tr
 

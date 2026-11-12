@@ -67,6 +67,21 @@ def main(argv: list[str] | None = None) -> int:
     app.setApplicationVersion(__version__)
     app.setOrganizationName("AIVCStudio")
     app.setStyleSheet(QSS)
+    from vcstudio.core import single_instance
+    from vcstudio.core.paths import AppPaths
+    other = single_instance.acquire(AppPaths.default().root)
+    if other is not None:
+        from PySide6.QtWidgets import QMessageBox
+
+        from vcstudio import i18n
+        i18n.set_language(i18n.resolve("auto"))
+        msg = i18n.tr("AI Virtual Camera Studio is already running (process {pid}). Two copies would fight over "
+                      "the output camera, so this one will close. Switch to the open window in the Dock.",
+                      pid=other or "?")
+        print(msg, file=sys.stderr)
+        if "--snapshot" not in argv and "--smoke-test" not in argv:
+            QMessageBox.information(None, APP_NAME, msg)
+        return 3
     ctx = AppContext()
     from vcstudio import i18n
     lang = argv[argv.index("--lang") + 1] if "--lang" in argv else ctx.settings.get("ui.language")
@@ -90,7 +105,6 @@ def main(argv: list[str] | None = None) -> int:
     if "--autostart-capture" in argv:
         QTimer.singleShot(300, ctx.start_capture)
     if "--snapshot" in argv:  # dev aid: save page screenshots after capture warms up, then quit
-        from pathlib import Path
         out = Path(argv[argv.index("--snapshot") + 1]); out.mkdir(parents=True, exist_ok=True)
 
         def snap():

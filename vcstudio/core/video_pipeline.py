@@ -228,70 +228,69 @@ class VideoPipeline:
     def _iteration(self, st: dict) -> None:
         from vcstudio.core.pixelbuffer import pixel_buffer_for
         last_ver = st["last_ver"]
-        if True:
-            self.heartbeat = time.monotonic()
-            frame, ver = self.capture.slot.wait_newer(last_ver, timeout=0.25)
-            if frame is None or ver == last_ver:
-                return
-            if last_ver >= 0 and ver - last_ver > 1:
-                with self._lock:
-                    self._stats.inputs_skipped += ver - last_ver - 1
-            st["last_ver"] = ver
-            t0 = time.perf_counter()
-            regions_n = 0
-            try:
-                ov = self.override
-                if ov is not None:
-                    key = (id(ov), frame.width, frame.height)
-                    if self._override_cache is None or self._override_cache[0] != key:
-                        self._override_cache = (key, np.ascontiguousarray(ov(frame.width, frame.height)))
-                    arr = self._override_cache[1]
-                    out = Frame(frame.seq, frame.pts, frame.arrival, frame.width, frame.height,
-                                pixel_buffer=pixel_buffer_for(Frame(frame.seq, frame.pts, frame.arrival, frame.width,
-                                                                    frame.height, array=arr, source="override")),
-                                source="override")
-                elif self.paused and self._last_out is not None:
-                    out = self._last_out
-                else:
-                    out = None
-                    if not self.passthrough and self.replacement_enabled and self.replacement.active():
-                        try:
-                            tracked = self.ai.tracked_at(frame.pts)
-                            regions = self.rois.resolve(tracked, frame.width, frame.height)
-                            regions_n = len(regions)
-                            pb = self.replacement.render_pb(frame, regions, frame.pts)
-                            out = Frame(frame.seq, frame.pts, frame.arrival, frame.width, frame.height,
-                                        pixel_buffer=pb, source="processed")
-                            self._consecutive_errors = 0
-                        except Exception as e:
-                            self._consecutive_errors += 1
-                            with self._lock:
-                                self._stats.render_errors += 1
-                                self._stats.last_error = f"{type(e).__name__}: {e}"
-                            log.exception("frame processing failed; passing this frame through")
-                            if self._consecutive_errors >= AUTO_PASSTHROUGH_ERRORS:
-                                self.set_passthrough(True, f"automatic: {self._consecutive_errors} consecutive render failures")
-                    if out is None:   # passthrough: forward the input buffer itself (zero-copy for camera frames)
+        self.heartbeat = time.monotonic()
+        frame, ver = self.capture.slot.wait_newer(last_ver, timeout=0.25)
+        if frame is None or ver == last_ver:
+            return
+        if last_ver >= 0 and ver - last_ver > 1:
+            with self._lock:
+                self._stats.inputs_skipped += ver - last_ver - 1
+        st["last_ver"] = ver
+        t0 = time.perf_counter()
+        regions_n = 0
+        try:
+            ov = self.override
+            if ov is not None:
+                key = (id(ov), frame.width, frame.height)
+                if self._override_cache is None or self._override_cache[0] != key:
+                    self._override_cache = (key, np.ascontiguousarray(ov(frame.width, frame.height)))
+                arr = self._override_cache[1]
+                out = Frame(frame.seq, frame.pts, frame.arrival, frame.width, frame.height,
+                            pixel_buffer=pixel_buffer_for(Frame(frame.seq, frame.pts, frame.arrival, frame.width,
+                                                                frame.height, array=arr, source="override")),
+                            source="override")
+            elif self.paused and self._last_out is not None:
+                out = self._last_out
+            else:
+                out = None
+                if not self.passthrough and self.replacement_enabled and self.replacement.active():
+                    try:
+                        tracked = self.ai.tracked_at(frame.pts)
+                        regions = self.rois.resolve(tracked, frame.width, frame.height)
+                        regions_n = len(regions)
+                        pb = self.replacement.render_pb(frame, regions, frame.pts)
                         out = Frame(frame.seq, frame.pts, frame.arrival, frame.width, frame.height,
-                                    pixel_buffer=pixel_buffer_for(frame), source="passthrough")
-                    self._last_out = out
-                self.camera.send(out.pixel_buffer, frame.pts)
-                self.processed.put((frame, out))
-                done = host_time_s()
-                self._fps.tick()
-                ms = (time.perf_counter() - t0) * 1000
-                lat = (done - frame.arrival) * 1000
-                self._lat.append(lat)
-                cs = self.replacement.compositor.stats
-                with self._lock:
-                    st = self._stats
-                    st.frames_out += 1
-                    st.process_ms = ms if st.frames_out == 1 else 0.9 * st.process_ms + 0.1 * ms
-                    st.latency_ms = lat if st.frames_out == 1 else 0.9 * st.latency_ms + 0.1 * lat
-                    st.render_ms, st.gpu_ms, st.backend = cs.render_ms, cs.gpu_ms, cs.backend
-                    st.regions = regions_n
-            except Exception as e:      # never let the output thread die
-                log.exception("pipeline iteration failed")
-                with self._lock:
-                    self._stats.last_error = f"{type(e).__name__}: {e}"
-                time.sleep(0.01)
+                                    pixel_buffer=pb, source="processed")
+                        self._consecutive_errors = 0
+                    except Exception as e:
+                        self._consecutive_errors += 1
+                        with self._lock:
+                            self._stats.render_errors += 1
+                            self._stats.last_error = f"{type(e).__name__}: {e}"
+                        log.exception("frame processing failed; passing this frame through")
+                        if self._consecutive_errors >= AUTO_PASSTHROUGH_ERRORS:
+                            self.set_passthrough(True, f"automatic: {self._consecutive_errors} consecutive render failures")
+                if out is None:   # passthrough: forward the input buffer itself (zero-copy for camera frames)
+                    out = Frame(frame.seq, frame.pts, frame.arrival, frame.width, frame.height,
+                                pixel_buffer=pixel_buffer_for(frame), source="passthrough")
+                self._last_out = out
+            self.camera.send(out.pixel_buffer, frame.pts)
+            self.processed.put((frame, out))
+            done = host_time_s()
+            self._fps.tick()
+            ms = (time.perf_counter() - t0) * 1000
+            lat = (done - frame.arrival) * 1000
+            self._lat.append(lat)
+            cs = self.replacement.compositor.stats
+            with self._lock:
+                st = self._stats
+                st.frames_out += 1
+                st.process_ms = ms if st.frames_out == 1 else 0.9 * st.process_ms + 0.1 * ms
+                st.latency_ms = lat if st.frames_out == 1 else 0.9 * st.latency_ms + 0.1 * lat
+                st.render_ms, st.gpu_ms, st.backend = cs.render_ms, cs.gpu_ms, cs.backend
+                st.regions = regions_n
+        except Exception as e:      # never let the output thread die
+            log.exception("pipeline iteration failed")
+            with self._lock:
+                self._stats.last_error = f"{type(e).__name__}: {e}"
+            time.sleep(0.01)

@@ -86,12 +86,10 @@ def camera_loopback_selftest(out_path: str, seconds: float = 6.0, device: str = 
 
     Measures what a third-party app would receive: delivered frames, frame rate, latency, order.
     """
-    import sys
     import threading
     import numpy as np
     from vcstudio.camera.output import VirtualCameraOutput, list_cmio_devices, list_streams
     from vcstudio.core.capture_supervisor import CaptureSupervisor
-    from vcstudio.core.frame import Frame
     from vcstudio.core.pixelbuffer import PixelBufferPool
     from vcstudio.core.video_capture import AVFoundationSource, request_camera_access
     from vcstudio.core.barcode import BITS
@@ -177,7 +175,6 @@ def pipeline_e2e_selftest(out_path: str, seconds: float = 8.0, out_device: str =
     silhouettes of people magenta; the client verifies magenta pixels where people are.
     """
     import os
-    import sys
     import tempfile
     import threading
     import numpy as np

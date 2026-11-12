@@ -15,14 +15,13 @@ from __future__ import annotations
 import copy
 import logging
 import threading
-import time
 from dataclasses import asdict, dataclass
 from typing import Callable
 
 from vcstudio.core.frame import Frame, host_time_s
 from vcstudio.core.frame_queue import LatestSlot
 from vcstudio.core.performance import FpsCounter
-from vcstudio.core.video_capture import (CaptureError, CaptureSource, FeedbackLoopRefused, PermissionDenied)
+from vcstudio.core.video_capture import (CaptureSource, FeedbackLoopRefused, PermissionDenied)
 
 log = logging.getLogger(__name__)
 

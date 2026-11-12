@@ -99,6 +99,7 @@ class AIEngine:
         # per task, models measured too slow for some mode's budget on this machine (p95 ms)
         self.mq_rejected: dict[str, dict[str, float]] = {"detect": {}, "segment": {}}
         self.mq_store = None   # Path: remembers too-slow models across launches (no reload ~30 s after start)
+        self.model_failures: dict[str, str] = {}   # chosen models that failed to load (cleared on reconfigure)
         self.mq_note = ""
         self.mq_note_tpl, self.mq_note_args = "", {}
         self._face: VisionFaceDetector | None = None
@@ -117,6 +118,7 @@ class AIEngine:
             t.low_thresh = min(t.low_thresh, cfg.confidence)
             self.tracker.configure(t)
             self._cfg_version += 1
+            self.model_failures.clear()      # a new choice (or a fixed model) gets a fresh try
 
     def tracker_config(self) -> TrackerConfig:
         with self._lock:
@@ -282,11 +284,29 @@ class AIEngine:
         # Silhouette replacement needs masks: the segmentation model replaces the detector
         # (it also returns boxes and classes), so only one model is resident.
         task, name = ("segment", cfg.segmentation_model) if cfg.need_masks else ("detect", cfg.detector_model)
+        if name not in ("auto", "", None) and name in self.model_failures:
+            name = "auto"            # the chosen model failed before: keep running on the automatic choice
+        try:
+            self._switch_to(self._wanted(task, name, mode), cfg)
+        except Exception as e:
+            if name in ("auto", "", None):
+                raise
+            # Safe switching: a chosen model that is missing or does not load must not stop detection.
+            self.model_failures[name] = f"{type(e).__name__}: {e}"
+            self._note("{model} could not be used ({err}); using the automatic choice", model=name, err=str(e)[:160])
+            self._sink("ERROR", "ai", f"Model {name} failed: {e}; falling back to the automatic choice")
+            log.error("Model %s failed (%s); falling back to the automatic choice", name, e)
+            self._switch_to(self._wanted(task, "auto", mode), cfg)
+
+    def _wanted(self, task: str, name, mode: str):
         want = None
         if mode in QUALITY_BUDGET_MS and name in ("auto", "", None):
             want = self._max_quality_choice(task, QUALITY_BUDGET_MS[mode])
         if want is None:
             want = self.models.resolve(name, task, prefer_large=(mode == "max_quality"))
+        return want
+
+    def _switch_to(self, want, cfg: DetectionConfig) -> None:
         cur = self._detector
         if cur is None or cur.name != want.name or cur.loaded.compute_units != cfg.compute_units:
             self._set_state("loading")

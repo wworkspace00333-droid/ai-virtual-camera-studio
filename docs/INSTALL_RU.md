@@ -87,6 +87,38 @@ gh release download --repo wworkspace00333-droid/ai-virtual-camera-studio --patt
 
 Изменить — **Настройки → Горячие клавиши**.
 
+## Проверка установки
+
+```bash
+"/Applications/AI Virtual Camera Studio.app/Contents/MacOS/AIVirtualCameraStudio" --self-check ~/Desktop/vcs-check.json
+```
+
+Проверяет каждую модель Core ML на образце, распознавание лиц, Metal, чтение кадров OBS и плагин OBS.
+Код выхода 0 — всё необходимое работает; отчёт — в указанном JSON.
+
+## Удаление
+
+1. Закройте приложение. Удалите **AI Virtual Camera Studio** из «Программ».
+2. Настройки, профили, импортированные модели и журнал:
+
+   ```bash
+   rm -rf ~/Library/Application\ Support/AIVirtualCameraStudio
+   ```
+
+3. Плагин OBS (если ставили):
+
+   ```bash
+   rm -rf ~/Library/Application\ Support/obs-studio/plugins/vcstudio-obs.plugin
+   ```
+
+4. Сбросить выданные разрешения (камера, запись экрана):
+
+   ```bash
+   tccutil reset Camera com.aivcstudio.app; tccutil reset ScreenCapture com.aivcstudio.app
+   ```
+
+Своей камеры (системного расширения) эта версия не устанавливает, удалять её не нужно.
+
 ## Запуск из исходников (для разработки)
 
 ```bash

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from PySide6.QtCore import QTimer
-from PySide6.QtGui import QImage
 from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton
 
 from vcstudio.ui.video_view import BLACK_INPUT_HINT, STATE_OVERLAY, VideoView, frame_is_black, frame_to_qimage

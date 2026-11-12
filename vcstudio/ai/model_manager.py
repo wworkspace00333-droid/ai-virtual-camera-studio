@@ -52,15 +52,29 @@ class ModelInfo:
     source: str = ""
     license: str = ""
     size_mb: float = 0.0
+    origin: str = "builtin"            # builtin | user (imported, vcstudio/ai/model_import.py)
+    confidence: float | None = None    # suggested detection threshold for this model
+    source_classes: list[str] = field(default_factory=list)   # the model's own names (before class_map)
+    benchmark: dict = field(default_factory=dict)
 
     @classmethod
     def from_package(cls, pkg: Path) -> "ModelInfo":
         meta_path = pkg.with_suffix(".json")
         meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
-        size = sum(f.stat().st_size for f in pkg.rglob("*") if f.is_file()) / 2**20
+        files = [pkg] if pkg.is_file() else [f for f in pkg.rglob("*") if f.is_file()]
+        size = sum(f.stat().st_size for f in files) / 2**20
+        classes = list(meta.get("classes", []))
         return cls(name=pkg.stem, package=pkg, task=meta.get("task", "detect"), imgsz=meta.get("imgsz", 640),
-                   classes=meta.get("classes", []), source=meta.get("source", ""),
-                   license=meta.get("license", ""), size_mb=round(size, 1))
+                   classes=classes, source=meta.get("source", ""),
+                   license=meta.get("license", ""), size_mb=round(size, 1),
+                   origin="user" if meta.get("origin") == "user" else "builtin",
+                   confidence=meta.get("confidence"),
+                   source_classes=list(meta.get("source_classes") or classes),
+                   benchmark=dict(meta.get("benchmark") or {}))
+
+    def label_map(self) -> dict[str, str]:
+        """The model's own class name -> the name shown and used by regions (identity unless remapped)."""
+        return dict(zip(self.source_classes, self.classes)) if len(self.source_classes) == len(self.classes) else {}
 
 
 @dataclass
@@ -88,7 +102,7 @@ class ModelManager:
         out: dict[str, ModelInfo] = {}
         for d in self.dirs:
             if d.is_dir():
-                for pkg in sorted(d.glob("*.mlpackage")):
+                for pkg in sorted([*d.glob("*.mlpackage"), *d.glob("*.mlmodel")]):
                     try:
                         out.setdefault(pkg.stem, ModelInfo.from_package(pkg))
                     except Exception as e:
@@ -101,20 +115,29 @@ class ModelManager:
         if not models:
             raise ModelError(f"No {task} models found. Run: .venv-convert/bin/python scripts/convert_models.py")
         if name in ("auto", "", None):
-            ranked = sorted(models.values(), key=lambda m: m.size_mb)
+            # "auto" picks by size among the built-in COCO models only: an imported model may detect
+            # entirely different classes, so it is used only when chosen by name.
+            pool = [m for m in models.values() if m.origin == "builtin"] or list(models.values())
+            ranked = sorted(pool, key=lambda m: m.size_mb)
             return ranked[-1] if prefer_large else ranked[0]
         if name not in models:
             raise ModelError(f"Model {name!r} not found (available: {', '.join(sorted(models))})")
         return models[name]
 
-    def ranked(self, task: str = "detect") -> list[ModelInfo]:
-        """Models of a task from largest (highest quality) to smallest."""
-        return sorted((m for m in self.available().values() if m.task == task), key=lambda m: -m.size_mb)
+    def ranked(self, task: str = "detect", include_user: bool = False) -> list[ModelInfo]:
+        """Models of a task from largest (highest quality) to smallest; built-in only unless include_user."""
+        return sorted((m for m in self.available().values()
+                       if m.task == task and (include_user or m.origin == "builtin")), key=lambda m: -m.size_mb)
+
+    def invalidate(self) -> None:
+        """Forget the directory scan (after a model was imported or removed)."""
+        self._avail_cache = None
 
     def _compiled_path(self, info: ModelInfo) -> Path:
         import CoreML  # type: ignore
         import Foundation  # type: ignore
-        mtime = int(max(f.stat().st_mtime for f in info.package.rglob("*") if f.is_file()))
+        files = [info.package] if info.package.is_file() else [f for f in info.package.rglob("*") if f.is_file()]
+        mtime = int(max(f.stat().st_mtime for f in files))
         target = self.cache_dir / f"{info.name}-{mtime}.mlmodelc"
         if target.exists():
             return target

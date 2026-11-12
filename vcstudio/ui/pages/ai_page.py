@@ -3,9 +3,10 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from pathlib import Path
 
 import numpy as np
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import (QCheckBox, QComboBox, QFormLayout, QGridLayout, QHBoxLayout, QLabel, QPushButton,
                                QTableWidget, QTableWidgetItem)
 
@@ -93,14 +94,25 @@ class AIEnginePage:
         lay.addWidget(cfg)
 
         models = Card("Installed models")
-        self.models = QTableWidget(0, 5)
-        self.models.setHorizontalHeaderLabels([tr("Model"), tr("Size"), tr("Classes"), tr("Source"), tr("License")])
+        self.models = QTableWidget(0, 7)
+        self.models.setHorizontalHeaderLabels([tr("Model"), tr("Type"), tr("Size"), tr("Classes"), tr("Threshold"),
+                                               tr("Source"), tr("License")])
         self.models.horizontalHeader().setStretchLastSection(True)
         self.models.setMinimumHeight(110)
+        self.models.setSelectionBehavior(QTableWidget.SelectRows)
         models.layout_.addWidget(self.models)
-        hint = QLabel(tr("Add models with: .venv-convert/bin/python scripts/convert_models.py <name>"))
-        hint.setObjectName("muted")
-        models.layout_.addWidget(hint)
+        mrow = QHBoxLayout()
+        self.import_btn = QPushButton(tr("Import model…"))
+        self.remove_btn = QPushButton(tr("Remove imported model"))
+        self.import_btn.clicked.connect(lambda: self.import_model())
+        self.remove_btn.clicked.connect(self.remove_model)
+        hint = QLabel(tr("Core ML .mlpackage / .mlmodel: a YOLO detector exported with NMS (Ultralytics format=coreml "
+                         "nms=True) or a YOLO segmentation model. It is checked and timed before it is installed."))
+        hint.setObjectName("muted"); hint.setWordWrap(True)
+        self.import_status = QLabel(); self.import_status.setWordWrap(True)
+        mrow.addWidget(self.import_btn); mrow.addWidget(self.remove_btn); mrow.addWidget(hint, 1)
+        models.layout_.addLayout(mrow)
+        models.layout_.addWidget(self.import_status)
         lay.addWidget(models)
 
         bench = Card("Benchmark (this Mac)")
@@ -171,7 +183,8 @@ class AIEnginePage:
         avail = self.ctx.models.available()
         for name, info in avail.items():
             if info.task == "detect":
-                self.model.addItem(f"{name} ({info.size_mb} MB)", name)
+                own = " · " + tr("imported") if info.origin == "user" else ""
+                self.model.addItem(f"{name} ({info.size_mb} MB){own}", name)
         idx = self.model.findData(ai.get("detector_model", "auto"))
         self.model.setCurrentIndex(max(0, idx))
         self.cu.setCurrentIndex(max(0, self.cu.findData(ai.get("compute_units", "all"))))
@@ -179,17 +192,100 @@ class AIEnginePage:
             w.blockSignals(False)
         self.models.setRowCount(len(avail))
         for i, (name, info) in enumerate(avail.items()):
-            for j, v in enumerate((name, f"{info.size_mb} " + tr("MB"), str(len(info.classes)), tr(info.source), info.license)):
-                self.models.setItem(i, j, QTableWidgetItem(v))
+            kind = (tr("detector") if info.task == "detect" else tr("segmentation")) + \
+                (" · " + tr("imported") if info.origin == "user" else "")
+            thr = f"{info.confidence:.2f}" if info.confidence else "—"
+            for j, v in enumerate((name, kind, f"{info.size_mb} " + tr("MB"), str(len(info.classes)), thr,
+                                   tr(info.source), info.license)):
+                it = QTableWidgetItem(v)
+                it.setData(Qt.UserRole, name)
+                self.models.setItem(i, j, it)
         self.models.resizeColumnsToContents()
+        self.remove_btn.setEnabled(any(i.origin == "user" for i in avail.values()))
 
     def _save(self, *_):
+        chosen = self.model.currentData() or "auto"
+        info = self.ctx.models.available().get(chosen)
+
         def mutate(b):
+            changed = b["ai"].get("detector_model") != chosen
             b["ai"]["enabled"] = self.enabled.isChecked()
             b["ai"]["face_detection"] = "vision" if self.face.isChecked() else None
-            b["ai"]["detector_model"] = self.model.currentData() or "auto"
+            b["ai"]["detector_model"] = chosen
             b["ai"]["compute_units"] = self.cu.currentData() or "all"
+            if changed and info is not None and info.confidence:
+                b["detection"]["confidence"] = float(info.confidence)   # the model's own threshold
         self.ctx.update_active_profile(mutate)
+
+    # ------------------------------------------------------------- import
+    def import_model(self, path: str | None = None):
+        from PySide6.QtWidgets import QFileDialog
+        if not path:
+            path, _ = QFileDialog.getOpenFileName(self.widget, tr("Import model…"), str(Path.home()),
+                                                  "Core ML (*.mlpackage *.mlmodel)")
+        if not path:
+            return
+        from vcstudio.ui.model_import_dialog import inspect_in_background
+        self.import_btn.setEnabled(False)
+        self.import_status.setStyleSheet("")
+        self.import_status.setText(tr("Checking {name}: compiling, test run and timing…", name=Path(path).name))
+        self._import_thread = inspect_in_background(Path(path), self._inspected)
+
+    def _inspected(self, report, error):
+        from vcstudio.ui.model_import_dialog import ModelImportDialog
+        self.import_btn.setEnabled(True)
+        if error is not None:
+            self.import_status.setStyleSheet("color: #f85149;")
+            self.import_status.setText(tr("Not imported: {e}", e=tr(str(error))))
+            return
+        self.import_status.setText("")
+        builtin = {n for n, i in self.ctx.models.available().items() if i.origin == "builtin"}
+        dlg = ModelImportDialog(report, builtin, self.widget)
+        dlg.models_dir = self.ctx.models.user_dir
+        self.import_dialog = dlg
+        if dlg.exec() and dlg.installed is not None:
+            self._installed(dlg.installed, dlg.use_now.isChecked())
+
+    def _installed(self, info, use_now: bool):
+        self.ctx.models.invalidate()
+        if use_now and info.task == "detect":
+            def mutate(b):
+                b["ai"]["detector_model"] = info.name
+                if info.confidence:
+                    b["detection"]["confidence"] = float(info.confidence)
+            self.ctx.update_active_profile(mutate)
+        self._load_from_profile()
+        self.import_status.setStyleSheet("color: #3fb950;")
+        self.import_status.setText(tr("Installed {name}.", name=info.name) +
+                                   (" " + tr("Detection now uses it.") if use_now and info.task == "detect" else ""))
+
+    def remove_model(self):
+        from PySide6.QtWidgets import QMessageBox
+        row = self.models.currentRow()
+        name = self.models.item(row, 0).data(Qt.UserRole) if row >= 0 and self.models.item(row, 0) else None
+        info = self.ctx.models.available().get(name) if name else None
+        if info is None or info.origin != "user":
+            self.import_status.setText(tr("Select an imported model in the table first."))
+            return
+        if QMessageBox.question(self.widget, tr("Remove imported model"),
+                                tr("Delete {name} from this Mac? Built-in models are not affected.", name=name)) \
+                != QMessageBox.Yes:
+            return
+        self._remove(info)
+
+    def _remove(self, info):
+        from vcstudio.ai import model_import as mi
+
+        def mutate(b):
+            if b["ai"].get("detector_model") == info.name:
+                b["ai"]["detector_model"] = "auto"
+        self.ctx.update_active_profile(mutate)        # stop using it before its files go
+        self.ctx.models.unload(info.name)
+        mi.remove(info)
+        self.ctx.models.invalidate()
+        self._load_from_profile()
+        self.import_status.setStyleSheet("")
+        self.import_status.setText(tr("Removed {name}.", name=info.name))
 
     def update_stats(self):
         s = self.ctx.ai.stats()

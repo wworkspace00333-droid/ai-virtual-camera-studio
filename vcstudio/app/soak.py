@@ -37,7 +37,6 @@ SCHEDULE = [
 
 def run_soak(out_dir: str, minutes: float, out_device: str | None, out_sink: str | None,
              in_device: str | None = None) -> int:
-    import numpy as np
     import psutil
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -60,7 +59,6 @@ def run_soak(out_dir: str, minutes: float, out_device: str | None, out_sink: str
     from vcstudio.camera.output import list_cmio_devices
     from vcstudio.core.bench_source import BenchSource, bus_scene
     from vcstudio.core.capture_supervisor import CaptureSupervisor
-    from vcstudio.core.frame import host_time_s
     from vcstudio.core.performance import phys_footprint, read_gpu_stats
     from vcstudio.core.video_capture import AVFoundationSource, request_camera_access
     from vcstudio.replacement.spec import ReplacementSpec
@@ -182,7 +180,6 @@ def run_soak(out_dir: str, minutes: float, out_device: str | None, out_sink: str
         event("fault_end", action=action, recovered=ok, recovery_s=round(time.monotonic() - t0, 2))
 
     done = threading.Event()
-    pending: list = []
 
     def scheduler():
         cycle = 0

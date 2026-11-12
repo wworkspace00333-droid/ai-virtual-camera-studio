@@ -7,10 +7,10 @@ from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtGui import QColor, QIcon, QImage, QPixmap
 from PySide6.QtWidgets import (QCheckBox, QColorDialog, QComboBox, QDoubleSpinBox, QFileDialog, QFormLayout,
                                QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMessageBox, QPushButton,
-                               QSlider, QSpinBox, QVBoxLayout, QWidget)
+                               QSlider, QSpinBox, QWidget)
 
 from vcstudio.core.frame import host_time_s
-from vcstudio.replacement.assets import Asset, AssetError, IMAGE_EXTS, VIDEO_EXTS, assets_from_profile
+from vcstudio.replacement.assets import AssetError, IMAGE_EXTS, VIDEO_EXTS, assets_from_profile
 from vcstudio.replacement.spec import EFFECTS, FITS, MODES, VIDEO_SYNC, ReplacementSpec
 from vcstudio.roi.model import rois_from_profile
 from vcstudio.ui.video_view import VideoView

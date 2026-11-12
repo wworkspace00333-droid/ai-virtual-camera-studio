@@ -70,6 +70,9 @@ final class VCDeviceSource: NSObject, CMIOExtensionDeviceSource {
     private var timer: DispatchSourceTimer?
     private var sourceStarted = false
     private var sinkStarted = false
+    // Each start of the sink stream gets a new generation; a consume loop from an earlier start ends
+    // when it sees a newer generation, so a quick stop -> start never leaves two loops reading.
+    private var sinkGeneration: UInt64 = 0
 
     // latest frame from the app (guarded by `queue`)
     private var latest: CVPixelBuffer?
@@ -150,22 +153,27 @@ final class VCDeviceSource: NSObject, CMIOExtensionDeviceSource {
     func startSink(client: CMIOExtensionClient) {
         queue.async { [self] in
             sinkStarted = true
-            consume(from: client)
+            sinkGeneration &+= 1
+            consume(from: client, generation: sinkGeneration, failures: 0)
         }
     }
 
     func stopSink() {
         queue.async { [self] in
             sinkStarted = false
+            sinkGeneration &+= 1      // ends the running consume loop
             latest = nil
         }
     }
 
-    private func consume(from client: CMIOExtensionClient) {
-        guard sinkStarted else { return }
+    /// Runs on `queue`. Errors (client gone, transient) back off 20 ms doubling to 1 s, so a sender that
+    /// crashed without stopping the stream does not cause a busy retry loop.
+    private func consume(from client: CMIOExtensionClient, generation: UInt64, failures: Int) {
+        guard sinkStarted, generation == sinkGeneration else { return }
         sink.stream.consumeSampleBuffer(from: client) { [weak self] sbuf, seq, _, _, err in
             guard let self = self else { return }
             self.queue.async {
+                guard self.sinkStarted, generation == self.sinkGeneration else { return }
                 if let sbuf = sbuf, let pb = CMSampleBufferGetImageBuffer(sbuf) {
                     self.latest = pb
                     self.latestAt = mach_absolute_time()
@@ -174,10 +182,12 @@ final class VCDeviceSource: NSObject, CMIOExtensionDeviceSource {
                     self.sink.stream.notifyScheduledOutputChanged(out)
                 }
                 if err != nil {
-                    // client went away or transient error: back off briefly, then keep consuming
-                    self.queue.asyncAfter(deadline: .now() + .milliseconds(20)) { self.consume(from: client) }
+                    let delay = min(1000, 20 << min(failures, 6))
+                    self.queue.asyncAfter(deadline: .now() + .milliseconds(delay)) {
+                        self.consume(from: client, generation: generation, failures: failures + 1)
+                    }
                 } else {
-                    self.consume(from: client)
+                    self.consume(from: client, generation: generation, failures: 0)
                 }
             }
         }
@@ -283,8 +293,18 @@ class VCStreamBase: NSObject, CMIOExtensionStreamSource {
     private(set) var stream: CMIOExtensionStream!
     let formatsList: [CMIOExtensionStreamFormat]
     unowned let device: VCDeviceSource
-    var activeFormatIndex: Int = 0
-    var activeFrameRate: Int32 = 60
+    // Set on the CMIO client queue, read by the output timer on the device queue: guarded by a lock.
+    private let propLock = NSLock()
+    private var _activeFormatIndex: Int = 0
+    private var _activeFrameRate: Int32 = 60
+    var activeFormatIndex: Int {
+        get { propLock.lock(); defer { propLock.unlock() }; return _activeFormatIndex }
+        set { propLock.lock(); _activeFormatIndex = newValue; propLock.unlock() }
+    }
+    var activeFrameRate: Int32 {
+        get { propLock.lock(); defer { propLock.unlock() }; return _activeFrameRate }
+        set { propLock.lock(); _activeFrameRate = newValue; propLock.unlock() }
+    }
 
     init(localizedName: String, streamID: UUID, direction: CMIOExtensionStream.Direction,
          formats: [CMIOExtensionStreamFormat], device: VCDeviceSource) {

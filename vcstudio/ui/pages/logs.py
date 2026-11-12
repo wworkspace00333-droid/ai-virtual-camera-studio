@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import logging
 import subprocess
 
 from PySide6.QtCore import QObject, Signal

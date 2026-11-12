@@ -142,7 +142,6 @@ class AssetLibrary:
         return image_cache(sp, self._mtime(p))
 
     def video_info(self, asset: Asset):
-        from vcstudio.replacement.video import probe
         p = self.path(asset)
         return video_info_cache(str(p), self._mtime(p))
 

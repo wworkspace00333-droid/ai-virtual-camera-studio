@@ -38,6 +38,14 @@ selected frame, ⌘⌥C show / hide all cards. *Mirror the card* fixes a card th
 a stand-in game (`scripts/fake_game.py`: mirrored, square-cropped, darkened around a captioned frame): 26 markers,
 0.35 px error, card placed in the frame.
 
+## Your own AI models
+
+AI Engine > **Import model…** takes a Core ML `.mlpackage` / `.mlmodel`: a YOLO detector exported with NMS
+(Ultralytics `format=coreml nms=True`, any classes) or a YOLO segmentation model. It is compiled, checked against its
+class list, run on a sample photo and timed before it is installed; classes can be renamed and a confidence threshold
+set. "Auto" never picks an imported model; a chosen model that fails to load falls back to the automatic choice
+without stopping detection. Audit and remaining work: [docs/AUDIT.md](docs/AUDIT.md).
+
 ## Supported Macs
 
 Any Apple Silicon Mac (M1 through M5, any memory size) on macOS 13 or later. Everything is built for `arm64-apple-macos13.0`; Intel Macs are not supported.

@@ -127,7 +127,7 @@ class AppContext:
     # ---------------- capture ----------------
     def capture_factory(self):
         """Build a source factory from current input settings."""
-        from vcstudio.core.video_capture import AVFoundationSource, CaptureError, TestPatternSource
+        from vcstudio.core.video_capture import AVFoundationSource, TestPatternSource
         i = self.settings.get("input")
         w, h, fps = i["preferred_width"], i["preferred_height"], i["preferred_fps"]
         if i["method"] == "test_pattern":
