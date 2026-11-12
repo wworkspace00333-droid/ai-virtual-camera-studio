@@ -9,7 +9,7 @@ settings:
   base:
     DEVELOPMENT_TEAM: ${VCS_TEAM_ID}
     CODE_SIGN_STYLE: Automatic
-    MARKETING_VERSION: "0.3.1"     # keep equal to vcstudio.__version__ (tests/test_packaging.py)
+    MARKETING_VERSION: "0.3.2"     # keep equal to vcstudio.__version__ (tests/test_packaging.py)
     CURRENT_PROJECT_VERSION: "9"
     ENABLE_HARDENED_RUNTIME: YES
     SWIFT_VERSION: "5.0"

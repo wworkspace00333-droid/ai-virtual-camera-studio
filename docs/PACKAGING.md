@@ -41,7 +41,7 @@ Measured on 2026-11-10 (MacBook Pro M5, 16 GB):
 | GUI `--autostart-capture --snapshot` | All pages render; the pipeline runs |
 | `codesign --verify --deep --strict` on the app and on the app inside the DMG | Pass |
 
-Rebuilt and re-measured on 2026-11-12 (MacBook Pro M2 Pro, 16 GB, macOS 27.2.1):
+Rebuilt and re-measured on 2026-11-12 (Mac mini M2 Pro (Mac14,12), 16 GB, macOS 27.2.1):
 
 | Check | Result |
 |---|---|

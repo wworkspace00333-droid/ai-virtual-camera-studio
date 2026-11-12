@@ -10,7 +10,7 @@
 #   Contents/MacOS/vcstudio                frozen Python payload (PyInstaller), started by the launcher
 #   Contents/Frameworks/                   Python runtime, Qt, PyObjC, OpenCV, libVCSNative/libVCSShm
 #   Contents/Resources/                    models, sample data, OBS plugin, developer scripts, icon
-# Signing: ad-hoc by default. With VCS_SIGN_IDENTITY="Developer ID Application: ..." the bundle is signed
+# Signing: local ad-hoc by default (scripts/sign_local.sh: inside-out, Hardened Runtime, packaging/local.entitlements). With VCS_SIGN_IDENTITY="Developer ID Application: ..." the bundle is signed
 # with the hardened runtime for notarization (Stage 13, requires an Apple Developer account).
 # The CoreMediaIO camera extension is embedded only by the Xcode build (scripts/build_camera.sh).
 set -e
@@ -45,21 +45,23 @@ swiftc -sdk "$SDK" -O -target arm64-apple-macos13.0 -o "$APP/Contents/MacOS/AIVi
 /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable AIVirtualCameraStudio" "$APP/Contents/Info.plist"
 
 echo "== codesign ($IDENTITY)"
-SIGN_OPTS=(--force --sign "$IDENTITY" --timestamp=none)
-if [[ "$IDENTITY" != "-" ]]; then
+if [[ "$IDENTITY" == "-" ]]; then
+    # local (ad-hoc) signing for this Mac: inside-out, Hardened Runtime, minimal non-restricted entitlements
+    "$ROOT/scripts/sign_local.sh" "$APP" | grep -E "^==|valid on disk|Designated|flags="
+else
     SIGN_OPTS=(--force --sign "$IDENTITY" --timestamp --options runtime \
                --entitlements "$ROOT/packaging/payload.entitlements")
+    # inner Mach-O files first (dylibs, .so, OBS plugin), then the executables, then the bundle
+    find "$APP/Contents/Frameworks" "$APP/Contents/Resources" -type f \( -name "*.dylib" -o -name "*.so" \) -print0 |
+        xargs -0 codesign "${SIGN_OPTS[@]}" 2>/dev/null
+    find "$APP/Contents/Frameworks" -type d -name "*.framework" -prune -print0 | xargs -0 -n 20 codesign "${SIGN_OPTS[@]}" 2>/dev/null || true
+    if [[ -d "$APP/Contents/Resources/obs-plugin/vcstudio-obs.plugin" ]]; then
+        codesign "${SIGN_OPTS[@]}" "$APP/Contents/Resources/obs-plugin/vcstudio-obs.plugin"
+    fi
+    codesign "${SIGN_OPTS[@]}" "$APP/Contents/MacOS/vcstudio"
+    codesign "${SIGN_OPTS[@]}" "$APP/Contents/MacOS/AIVirtualCameraStudio"
+    codesign "${SIGN_OPTS[@]}" "$APP"
 fi
-# inner Mach-O files first (dylibs, .so, OBS plugin), then the executables, then the bundle
-find "$APP/Contents/Frameworks" "$APP/Contents/Resources" -type f \( -name "*.dylib" -o -name "*.so" \) -print0 |
-    xargs -0 codesign "${SIGN_OPTS[@]}" 2>/dev/null
-find "$APP/Contents/Frameworks" -type d -name "*.framework" -prune -print0 | xargs -0 -n 20 codesign "${SIGN_OPTS[@]}" 2>/dev/null || true
-if [[ -d "$APP/Contents/Resources/obs-plugin/vcstudio-obs.plugin" ]]; then
-    codesign "${SIGN_OPTS[@]}" "$APP/Contents/Resources/obs-plugin/vcstudio-obs.plugin"
-fi
-codesign "${SIGN_OPTS[@]}" "$APP/Contents/MacOS/vcstudio"
-codesign "${SIGN_OPTS[@]}" "$APP/Contents/MacOS/AIVirtualCameraStudio"
-codesign "${SIGN_OPTS[@]}" "$APP"
 codesign --verify --deep --strict "$APP"
 echo "   signature OK"
 du -sh "$APP"

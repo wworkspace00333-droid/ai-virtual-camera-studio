@@ -19,7 +19,7 @@ Status values: ✅ done and tested · 🟡 in progress · ⬜ not started · ⛔
 | 12 | Integration/stress | E2E (OBS → camera → QuickTime/FaceTime), 2 h+ soak test with memory tracking | ✅ see [STABILITY.md](STABILITY.md); the E2E through AI Virtual Camera itself is redone after Stage 9 |
 | 13 | Packaging | PyInstaller app, embedded extension, signing, notarization, DMG | 🟡 13a ✅ self-contained app + DMG (ad-hoc signed, self-check 12/12 from the DMG, see [PACKAGING.md](PACKAGING.md)); 13b (embedded extension, Developer ID, notarization) ⛔ needs Xcode + Developer ID |
 
-## Portability update (2026-11-12, MacBook Pro M2 Pro, 16 GB, macOS 27.2.1, Xcode 27.0)
+## Portability update (2026-11-12, Mac mini M2 Pro (Mac14,12), 16 GB, macOS 27.2.1, Xcode 27.0)
 
 - **Moved to a second Mac:** fresh `.venv` (Python 3.12.16), native libraries and dev app rebuilt; the full suite passes here (live tests skipped as usual).
 - **Camera extension now builds:** with Xcode 27 the `native/project.yml` project builds unsigned (`BUILD SUCCEEDED`), and the arm64 extension is embedded in the host app. Installing it still needs a Developer team signature (Stage 9 stays 🟡).
@@ -39,6 +39,12 @@ Status values: ✅ done and tested · 🟡 in progress · ⬜ not started · ⛔
   camera → screen (dense 12×6 grid, coarse 6×3 fallback, mirrored views handled), frame detection on a grey
   picture, manual frame drawing, card switching, mirror option. 10 tests, including the whole dialog flow with a
   simulated screen; verified live.
+- **Daily-use pass 0.3.2 (Mac mini M2 Pro):** fixed the --snapshot first-launch crash, made Settings > Pixel
+  format real (NV12 default: 0 drops into OBS Virtual Camera), pages fit the window in Russian, built-in region
+  names translated, persistence test across a restart, live matrix 24/24 (4 modes x image / segmentation / video /
+  face / card / all), 60-minute GUI run with two OBS restarts (0 errors, 0 dropped, flat memory), local signing
+  with Hardened Runtime (`scripts/sign_local.sh`, [LOCAL_SIGNING_RU.md](LOCAL_SIGNING_RU.md)). Own camera
+  extension: blocker proven stage by stage ([CAMERA_LOCAL_SIGNING.md](CAMERA_LOCAL_SIGNING.md)).
 - **Card for a game 0.2.0:** several frames per game (all found automatically, reading order), named layouts per
   game, card list with drag and drop and ⌘V paste, global hotkeys (next / previous card, show / hide). Verified live
   with a two-frame stand-in game: both frames found (27 markers), cards placed and mirrored correctly, hotkeys switch

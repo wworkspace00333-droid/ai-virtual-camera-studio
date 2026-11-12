@@ -2,7 +2,23 @@
 
 All runs were on the target MacBook Pro M5 (16 GB), macOS 27.2, on 2026-11-09.
 
-## 30-minute soak on a second Mac (MacBook Pro M2 Pro, 16 GB, macOS 27.2.1, 2026-11-12)
+## 60-minute GUI run on the real OBS video (Mac mini M2 Pro, 2026-11-12)
+
+`scripts/gui_soak.py`: the real window (Russian), OBS input through the plugin, OBS Virtual Camera output in NV12,
+Hide face and a game card on; a different page every 5 s; a 50 ms UI timer measures stalls; OBS quit and reopened
+at minutes 20 and 40.
+
+| Measure | Result |
+|---|---|
+| Render errors / AI errors | 0 / 0 |
+| Frames sent to the camera / dropped | 106,502 / **0** |
+| Input / output fps (median) | 30 / 30 (OBS runs at 30) |
+| Footprint first quarter → last quarter (max) | 405.5 → 414.2 MB (528 MB): no growth |
+| Threads / file descriptors | 13–30 / 27–38, no accumulation |
+| OBS quit + reopen, twice | recovered ≤ 10 s after OBS opened (10 s sampling) both times |
+| UI stalls | max 0.30 s; 5 of the 6 stalls > 0.25 s coincided with the tool's own memory sampling (`footprint` on the UI thread, since moved to a thread); the sixth (0.26 s) at the moment OBS quit |
+
+## 30-minute soak on a second Mac (Mac mini M2 Pro (Mac14,12), 16 GB, macOS 27.2.1, 2026-11-12)
 
 Same command and workload as below with `--minutes 30` (6 full fault cycles), output to OBS Virtual Camera.
 

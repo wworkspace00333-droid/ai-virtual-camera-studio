@@ -50,7 +50,7 @@ App CPU is a percentage of one core; the M5 has 10.
 - **Power management shows up in the numbers.** At low duty cycles the GPU and Neural Engine clock down, so per-inference time in Low Resource is not lower than in Performance. When AI runs on every frame (Maximum Quality), the GPU stays clocked up and compositing latency is lowest.
 - **One transient:** in 1 of 5 Low Resource runs, one 1-second window dropped to 45 fps. It was not reproduced in 4 repeat runs (all with a minimum of 59–60).
 
-## Second machine: MacBook Pro M2 Pro, 16 GB (2026-11-12)
+## Second machine: Mac mini M2 Pro (Mac14,12), 16 GB (2026-11-12)
 
 Same command, same scenarios, 20 s per mode after warm-up. macOS 27.2.1; M2 Pro with 6 performance + 4 efficiency cores. Headless, so these numbers don't include the preview window.
 

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <!-- Hardened Runtime exceptions for a locally (ad-hoc) signed build. None of these is restricted: no Apple
+       provisioning profile or certificate is needed. No App Sandbox (the app reads OBS shared memory, runs
+       screencapture and loads user models from its data folder).
+       device.camera              camera input (AVFoundation) is allowed under the hardened runtime
+       disable-library-validation ad-hoc libraries have no Team ID, so library validation would refuse them
+       allow-unsigned-executable-memory  Python / PyObjC / libffi create executable trampolines at run time -->
+  <key>com.apple.security.device.camera</key><true/>
+  <key>com.apple.security.cs.disable-library-validation</key><true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key><true/>
+</dict></plist>

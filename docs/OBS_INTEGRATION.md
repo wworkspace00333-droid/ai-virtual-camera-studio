@@ -70,7 +70,7 @@ OBS Studio ──(vcstudio-obs plugin)──► AI Virtual Camera Studio ──�
 3. **Preview > Start.** In the receiving app, select **OBS Virtual Camera**.
 4. Don't click **Start Virtual Camera** in OBS while the app feeds it: both would write to the same camera.
 
-Measured on a MacBook Pro M2 Pro (2026-11-12), OBS at 1080p30, `--pipeline-e2e-test … --input obs`: client received
+Measured on a Mac mini M2 Pro (Mac14,12) (2026-11-12), OBS at 1080p30, `--pipeline-e2e-test … --input obs`: client received
 30.1 distinct fps at 1920×1080, the replacement was visible in 100% of frames, 0 render errors, pipeline latency
 3.3 ms (p95 4.5 ms). Loopback into the OBS camera alone: 351 of 352 frames, 6.0 ms median / 15.6 ms p95.
 
