@@ -20,33 +20,36 @@ QuickTime / FaceTime / Zoom / браузер.** Своё системное ра
 
 Прошло: последняя строка `OK: 11/12` или `12/12` (ffmpeg необязателен).
 
-## 2. Замер всей цепочки (20 секунд)
+## 2. Замер всей цепочки (около 30 секунд) — кнопкой
 
-Закройте окно приложения (обе проверки сами запускают конвейер и пишут в камеру OBS). Запуск через `open`, чтобы
-разрешение на камеру спрашивалось для приложения, а не для Терминала.
+Откройте OBS (с источником в сцене) и приложение. **Виртуальная камера → Проверить всю цепочку.**
+Приложение само приостановит свою обработку, пропустит тестовую сцену 1080p60, затем ваше видео из OBS
+через ИИ и Metal в камеру OBS Virtual Camera, примет его так же, как QuickTime или Zoom, и покажет результат
+в окне. Отчёты сохраняются в папку приложения — кнопка **Открыть папку отчётов**
+(`~/Library/Application Support/AIVirtualCameraStudio/reports/`). Никаких разрешений на «Рабочий стол»
+и никакого Терминала не нужно. При первом запуске macOS спросит доступ к камере для приложения — разрешите.
 
-Синтетическая сцена 1080p60 (точная частота, пропуски, замена):
+| В результате | Прошло |
+|---|---|
+| «УСПЕХ» в обеих строках | да |
+| кадр/с у клиента | ≈ 60 у тестовой сцены; = частоте OBS у вашего видео |
+| обработка видна | 100 % (или близко) |
+| ошибок отрисовки | 0 |
+| отброшено очередью камеры | малая доля при 60 кадр/с, 0 при 30 кадр/с |
+
+Пришлите текст результата (его можно выделить мышкой) или два файла из папки отчётов.
+
+### Через Терминал (если нужно)
 
 ```bash
-open -W -n "/Applications/AI Virtual Camera Studio.app" --args --pipeline-e2e-test ~/Desktop/e2e-synthetic.json --seconds 20 --device "OBS Virtual Camera" --sink "OBS Camera Extension Stream Sink"
+open -W -n "/Applications/AI Virtual Camera Studio.app" --args --pipeline-e2e-test "$HOME/Library/Application Support/AIVirtualCameraStudio/reports/e2e-synthetic.json" --seconds 20 --device "OBS Virtual Camera" --sink "OBS Camera Extension Stream Sink"
 ```
 
-Ваше настоящее видео из OBS:
-
-```bash
-open -W -n "/Applications/AI Virtual Camera Studio.app" --args --pipeline-e2e-test ~/Desktop/e2e-obs.json --seconds 20 --device "OBS Virtual Camera" --sink "OBS Camera Extension Stream Sink" --input obs
-```
-
-В обоих отчётах `ok` — `true`; независимый клиент принимает камеру так же, как QuickTime или Zoom (AVFoundation).
-
-| Поле отчёта | Что значит | Прошло |
-|---|---|---|
-| `client_distinct_fps` | разных кадров в секунду у клиента | ≈ 60 (синтетика); = частоте OBS (настоящее видео) |
-| `client_resolution` | разрешение у клиента | `1920x1080` |
-| `frames_with_replacement` | доля кадров, где видна обработка | 1.0 |
-| `pipeline_latency_ms` / `_p95_ms` | вход → отправка в камеру | несколько мс |
-| `camera_dropped` / `camera_sent` | кадры, отброшенные очередью камеры OBS | малая доля (см. ниже) |
-| `render_errors` | ошибки отрисовки | 0 |
+Если файл не появился:
+- `open` написал ошибку о невозможности открыть приложение — DMG из интернета на карантине: один раз откройте
+  приложение правой кнопкой → Открыть, или `xattr -dr com.apple.quarantine "/Applications/AI Virtual Camera Studio.app"`;
+- `Unable to find application` — приложение не в «Программах»: укажите его настоящий путь;
+- путь на «Рабочий стол»/«Документы» — macOS может молча не дать доступ; пишите отчёт в папку приложения, как выше.
 
 ## 3. Сторонние программы (вручную, 2 минуты)
 
@@ -72,7 +75,7 @@ open -W -n "/Applications/AI Virtual Camera Studio.app" --args --pipeline-e2e-te
 
 ## Результаты на MacBook Pro M2 Pro, macOS 27.2.1 (2026-11-12)
 
-Команды — как в разделе 2, через dev-сборку (`build/AI Virtual Camera Studio Dev.app`).
+Команды — как в разделе 2, через dev-сборку (`build/AI Virtual Camera Studio Dev.app`). Кнопка «Проверить всю цепочку» на этом Mac: тестовая сцена 60,1 кадр/с у клиента, обработка в 99 % кадров, 29 из 675 отброшено очередью камеры; ваше видео из OBS 30,1 кадр/с, 100 %, 0 из 346; захват после проверки перезапустился сам.
 
 | Замер | Синтетика 1080p60 | Видео из OBS (OBS 1080p30) |
 |---|---|---|

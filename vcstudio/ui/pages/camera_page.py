@@ -5,7 +5,7 @@ import tempfile
 import threading
 from pathlib import Path
 
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtWidgets import (QComboBox, QFormLayout, QGridLayout, QHBoxLayout, QLabel, QMessageBox, QPushButton,
                                QTableWidget, QTableWidgetItem)
 
@@ -61,6 +61,23 @@ class VirtualCameraPage:
         st.layout_.addLayout(row)
         lay.addWidget(st)
 
+        chain = Card("Check the whole chain")
+        chint = QLabel(tr("One click: the app pauses its own processing, sends a 1080p60 test scene and then your OBS "
+                          "video through AI and Metal into the selected camera, receives it like QuickTime or Zoom "
+                          "would, and shows frame rate, dropped frames, latency and whether the processing is "
+                          "visible. About 30 seconds."))
+        chint.setObjectName("muted"); chint.setWordWrap(True)
+        chain.layout_.addWidget(chint)
+        crow = QHBoxLayout()
+        self.chain_btn = QPushButton(tr("Check the whole chain")); self.chain_btn.setObjectName("primary")
+        self.reports_btn = QPushButton(tr("Open reports folder"))
+        crow.addWidget(self.chain_btn); crow.addWidget(self.reports_btn); crow.addStretch()
+        chain.layout_.addLayout(crow)
+        self.chain_info = QLabel(); self.chain_info.setWordWrap(True)
+        self.chain_info.setTextInteractionFlags(self.chain_info.textInteractionFlags() | Qt.TextSelectableByMouse)
+        chain.layout_.addWidget(self.chain_info)
+        lay.addWidget(chain)
+
         test = Card("Verify in other apps")
         hint = QLabel(tr("Send a moving, numbered test pattern to the selected output camera, then select that camera "
                       "in FaceTime, QuickTime Player (File > New Movie Recording), Photo Booth or Zoom. The loopback "
@@ -94,6 +111,9 @@ class VirtualCameraPage:
         self.refresh_btn.clicked.connect(self.refresh)
         self.pattern_btn.toggled.connect(self._toggle_pattern)
         self.loop_btn.clicked.connect(self._loopback)
+        self.chain_btn.clicked.connect(self.check_chain)
+        self.reports_btn.clicked.connect(self._open_reports)
+        self._chain = None
         self.timer = QTimer(self.widget); self.timer.timeout.connect(self._tick); self.timer.start(500)
         self.refresh()
 
@@ -228,6 +248,38 @@ class VirtualCameraPage:
                 ". " + tr("Error: {e}", e=r['error']) if r.get("error") else "")
             self._sig.done.emit("loopback", f"0|{msg}")
         threading.Thread(target=work, daemon=True).start()
+
+    def check_chain(self):
+        from vcstudio.ui.chain_check import ChainCheck
+        if self.sender:
+            self.pattern_btn.setChecked(False)
+        dev, sink = self.output_device()
+        self.chain_btn.setEnabled(False)
+        self.chain_info.setStyleSheet("")
+        self._chain = ChainCheck(self.ctx, dev, sink, self.widget)
+        self._chain.progress.connect(self.chain_info.setText)
+        self._chain.finished.connect(self._chain_done)
+        self._chain.start()
+
+    def _chain_done(self, results):
+        from vcstudio.ui.chain_check import summarize
+        self.chain_btn.setEnabled(True)
+        ok = bool(results) and all(r.get("ok") for _, r, _ in results)
+        lines = [f"{title}: {summarize(r)}" for title, r, _ in results]
+        if len(results) == 1:
+            lines.append(tr("Your OBS video was not checked: OBS is not sharing frames (open OBS with the "
+                            "vcstudio-obs plugin)."))
+        lines.append(tr("Reports: {path}", path=str(self.ctx.paths.root / "reports")))
+        self.chain_info.setStyleSheet("color: #3fb950;" if ok else "color: #f85149;")
+        self.chain_info.setText("\n".join(lines))
+        self.last_chain = results
+
+    def _open_reports(self):
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        d = self.ctx.paths.root / "reports"
+        d.mkdir(parents=True, exist_ok=True)
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(d)))
 
     def _tick(self):
         if not self.widget.isVisible():
