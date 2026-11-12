@@ -56,6 +56,8 @@ gh release download --repo wworkspace00333-droid/ai-virtual-camera-studio --patt
 
 Язык интерфейса: **Настройки → Язык** (применяется после перезапуска).
 
+Полная проверка цепочки с замерами и сторонними программами: [TEST_OBS_CAMERA_RU.md](TEST_OBS_CAMERA_RU.md).
+
 ## Разрешения macOS
 
 | Разрешение | Когда спрашивается | Зачем |
