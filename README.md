@@ -6,6 +6,8 @@ All processing runs locally. The app contains no network code.
 
 > **Status: Stages 1–8 and 10–12 are complete: capture (OBS Virtual Camera and the direct OBS plugin), on-device AI detection and tracking, the ROI editor, image and video replacement, the Metal compositor, the real-time pipeline with watchdogs, M5 optimisation, and the 2-hour soak. Stage 13a is also complete: a self-contained `.app` and DMG. Stage 9 (virtual camera) is code-complete. Stage 9 and Stage 13b (embedded extension, Developer ID signing, notarization) wait on Xcode and an Apple Developer team.** See [docs/ROADMAP.md](docs/ROADMAP.md).
 
+**Установка на другой Mac (по-русски): [docs/INSTALL_RU.md](docs/INSTALL_RU.md).** The ready DMG is attached to the GitHub Releases of this repository.
+
 ## Interface language
 
 English and Russian. Settings > Language: *Automatic* follows the macOS language; the choice applies after a restart.
