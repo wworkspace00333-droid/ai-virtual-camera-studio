@@ -66,7 +66,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "preferred_height": 1080,
         "preferred_fps": 60,
         "auto_reconnect": True,
-        "autostart": False,
+        "autostart": True,
         "frozen_frame_timeout_ms": 2000,
         "missing_input_timeout_ms": 1500,
     },

@@ -29,7 +29,8 @@ class ReplacementService:
 
     def active(self) -> bool:
         specs, assets = self.state()
-        return any(s.enabled and s.asset_id in assets for s in specs.values())
+        # effects (blur / pixelate / colour) need no asset
+        return any(s.enabled and (s.mode == "effect" or s.asset_id in assets) for s in specs.values())
 
     def render(self, frame, regions, t: float | None = None):
         specs, assets = self.state()

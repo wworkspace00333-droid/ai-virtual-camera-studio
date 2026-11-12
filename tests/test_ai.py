@@ -284,3 +284,17 @@ def test_face_detection_on_by_default():
     # COCO has no "face" class: without Vision faces a close-up shows only a frame-wide "person" box.
     from vcstudio.core.profiles import default_profile_body
     assert DetectionConfig.from_profile(default_profile_body()).face_detection is True
+
+
+def test_too_slow_models_are_remembered(tmp_path):
+    from vcstudio.ai.engine import AIEngine
+    f = tmp_path / "auto_model.json"
+    a = AIEngine(None, ModelManager(REPO_MODELS))
+    a.load_mq(f)
+    a.mq_rejected["detect"]["yolo11m"] = 26.9
+    a._save_mq()
+    b = AIEngine(None, ModelManager(REPO_MODELS))
+    b.load_mq(f)
+    assert b.mq_rejected["detect"] == {"yolo11m": 26.9}
+    assert b._max_quality_choice("detect", 25.0).name != "yolo11m"
+    AIEngine(None, ModelManager(REPO_MODELS)).load_mq(tmp_path / "missing.json")   # absent file is fine

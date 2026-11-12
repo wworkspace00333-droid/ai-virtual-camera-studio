@@ -98,6 +98,7 @@ class AIEngine:
         self.restarts = 0
         # per task, models measured too slow for some mode's budget on this machine (p95 ms)
         self.mq_rejected: dict[str, dict[str, float]] = {"detect": {}, "segment": {}}
+        self.mq_store = None   # Path: remembers too-slow models across launches (no reload ~30 s after start)
         self.mq_note = ""
         self.mq_note_tpl, self.mq_note_args = "", {}
         self._face: VisionFaceDetector | None = None
@@ -234,6 +235,7 @@ class AIEngine:
         ranked = [m.name for m in self.models.ranked(task)]
         if p95 > budget and ranked and cur != ranked[-1]:
             self.mq_rejected.setdefault(task, {})[cur] = round(p95, 1)
+            self._save_mq()
             self._note("{model} p95 {p95} ms > {budget} ms budget: stepping down", model=cur, p95=f"{p95:.1f}",
                        budget=f"{budget:g}")
             self._sink("WARNING", "ai", f"Auto model: {self.mq_note}")
@@ -243,6 +245,26 @@ class AIEngine:
         elif p95 <= budget and not self.mq_note.startswith(f"{cur} sustains"):
             self._note("{model} sustains p95 {p95} ms (budget {budget} ms)", model=cur, p95=f"{p95:.1f}",
                        budget=f"{budget:g}")
+
+    def load_mq(self, path) -> None:
+        """Restore models measured as too slow on this Mac (file in the app's data directory)."""
+        import json
+        self.mq_store = path
+        try:
+            data = json.loads(path.read_text())
+            for task in ("detect", "segment"):
+                self.mq_rejected[task].update({str(k): float(v) for k, v in data.get(task, {}).items()})
+        except (OSError, ValueError, AttributeError, TypeError):
+            pass
+
+    def _save_mq(self) -> None:
+        import json
+        if self.mq_store is None:
+            return
+        try:
+            self.mq_store.write_text(json.dumps(self.mq_rejected, indent=1))
+        except OSError as e:
+            log.warning("Could not save auto-model measurements: %s", e)
 
     def _max_quality_choice(self, task: str, budget: float = MQ_BUDGET_MS):
         """Largest model of `task` not measured as too slow for `budget` on this hardware."""

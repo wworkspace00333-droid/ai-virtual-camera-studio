@@ -568,4 +568,13 @@ RU: dict[str, str] = {
     "Max FPS": "Макс. кадр/с",
     "Show detections": "Показывать обнаружения",
     "Virtual camera": "Виртуальная камера",
+    "Hide face": "Скрыть лицо",
+    "Pixelates every detected face in the camera output (adds a region on the Region Editor page; click again to remove it).":
+        "Пикселизирует каждое найденное лицо на выходе камеры (добавляет зону в «Редакторе зон»; повторное нажатие убирает её).",
+    "Emergency passthrough is on: the camera gets the original video.":
+        "Включён аварийный прямой проход: камера получает исходное видео.",
+    "Replacement is off: the camera gets the original video.": "Замена выключена: камера получает исходное видео.",
+    "No regions yet, so the camera gets the original video. Click “Hide face”, or create a region on the Region Editor page.":
+        "Зон пока нет, поэтому камера получает исходное видео без изменений. Нажмите «Скрыть лицо» или создайте зону на странице «Редактор зон».",
+    "Start capture when the app opens": "Запускать захват при открытии приложения",
 }

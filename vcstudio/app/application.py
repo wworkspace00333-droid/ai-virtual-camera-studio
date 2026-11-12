@@ -45,6 +45,7 @@ class AppContext:
         from vcstudio.ai.model_manager import ModelManager
         self.models = ModelManager(self.paths.models_dir)
         self.ai = AIEngine(self.capture, self.models, event_sink=self.db.log_event)
+        self.ai.load_mq(self.paths.root / "auto_model.json")
         from vcstudio.roi.resolver import RoiService
         self.rois = RoiService()
         from vcstudio.replacement.assets import AssetLibrary

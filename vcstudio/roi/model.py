@@ -161,3 +161,26 @@ def rois_from_profile(body: dict) -> list[ROI]:
         except (ROIError, TypeError):
             continue
     return out
+
+
+QUICK_FACE_ID = "quickface"
+
+
+def quick_face_roi(effect: str = "pixelate") -> ROI:
+    """One-click "hide my face": an auto region on every tracked face with a pixelate/blur effect.
+
+    Padding covers hair/ears and a few frames of motion between AI updates."""
+    from vcstudio.replacement.spec import ReplacementSpec
+    r = ROI(id=QUICK_FACE_ID, name="Hide face", mode="auto", classes=["face"], padding=0.25, priority=100)
+    r.replacement = ReplacementSpec(enabled=True, mode="effect", effect=effect, pixel_size=28, blur_sigma=24.0,
+                                    feather_px=6.0).to_dict()
+    return r
+
+
+def set_quick_face(body: dict, on: bool) -> None:
+    """Add/remove the quick face region in a profile body (Apple Vision faces are switched on with it)."""
+    body["rois"] = [r for r in body.get("rois", []) if r.get("id") != QUICK_FACE_ID]
+    if on:
+        body["rois"].append(quick_face_roi().to_dict())
+        body.setdefault("ai", {})["face_detection"] = "vision"
+        body["ai"]["enabled"] = True

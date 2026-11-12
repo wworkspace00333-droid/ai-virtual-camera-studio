@@ -23,16 +23,28 @@ class PreviewPage:
         self.pause_btn = QPushButton(tr("Pause output")); self.pause_btn.setCheckable(True)
         self.pass_btn = QPushButton(tr("Emergency passthrough")); self.pass_btn.setObjectName("danger"); self.pass_btn.setCheckable(True)
         self.repl_btn = QPushButton(tr("Replacement on")); self.repl_btn.setCheckable(True); self.repl_btn.setChecked(True)
+        self.face_btn = QPushButton(tr("Hide face")); self.face_btn.setCheckable(True)
+        self.face_btn.setToolTip(tr("Pixelates every detected face in the camera output (adds a region on the "
+                                    "Region Editor page; click again to remove it)."))
         self.boxes = QCheckBox(tr("Show detections")); self.boxes.setChecked(True)
         src_btn = QPushButton(tr("Input settings…"))
-        for b in (self.start_btn, self.stop_btn, self.pause_btn, self.pass_btn, self.repl_btn, self.boxes):
+        # two rows: one row of all controls is wider than a 1100 px window in Russian
+        for b in (self.start_btn, self.stop_btn, self.pause_btn, self.pass_btn):
             bar.addWidget(b)
         bar.addStretch()
         bar.addWidget(src_btn)
         lay.addLayout(bar)
+        bar2 = QHBoxLayout()
+        for b in (self.repl_btn, self.face_btn, self.boxes):
+            bar2.addWidget(b)
+        bar2.addStretch()
+        lay.addLayout(bar2)
         # own line: a long source description in the button bar would widen the page past the window
         self.info = QLabel(); self.info.setObjectName("muted"); self.info.setWordWrap(True)
         lay.addWidget(self.info)
+        self.note = QLabel(); self.note.setWordWrap(True); self.note.setStyleSheet("color: #d29922;")
+        self.note.hide()
+        lay.addWidget(self.note)
         views = QHBoxLayout()
         self.original = VideoView("ORIGINAL")
         self.processed = VideoView("PROCESSED  →  AI Virtual Camera")
@@ -51,6 +63,7 @@ class PreviewPage:
         self.repl_btn.toggled.connect(lambda on: ctx.pipeline.set_replacement_enabled(on)
                                       if on != ctx.pipeline.replacement_enabled else None)
         self.boxes.toggled.connect(lambda on: setattr(self.feeder, "show_detections", on))
+        self.face_btn.toggled.connect(self._toggle_face)
         src_btn.clicked.connect(goto_input)
         self._last_ver = -1
         self.timer = QTimer(self.widget)
@@ -63,6 +76,31 @@ class PreviewPage:
             if b.isChecked() != v:
                 b.blockSignals(True); b.setChecked(v); b.blockSignals(False)
         self.repl_btn.setText(tr("Replacement on") if p.replacement_enabled else tr("Replacement off"))
+        on = self._quick_face_on()
+        if self.face_btn.isChecked() != on:
+            self.face_btn.blockSignals(True); self.face_btn.setChecked(on); self.face_btn.blockSignals(False)
+
+    def _quick_face_on(self) -> bool:
+        from vcstudio.roi.model import QUICK_FACE_ID
+        return any(r.id == QUICK_FACE_ID and r.enabled for r in self.ctx.rois.rois())
+
+    def _toggle_face(self, on: bool) -> None:
+        from vcstudio.roi.model import set_quick_face
+        self.ctx.update_active_profile(lambda b: set_quick_face(b, on))
+        if on and not self.ctx.pipeline.replacement_enabled:
+            self.ctx.pipeline.set_replacement_enabled(True)
+
+    def output_note(self) -> str:
+        """Why the camera output looks unchanged, if it does."""
+        p = self.ctx.pipeline
+        if p.passthrough:
+            return tr("Emergency passthrough is on: the camera gets the original video.")
+        if not p.replacement_enabled:
+            return tr("Replacement is off: the camera gets the original video.")
+        if not [r for r in self.ctx.rois.rois() if r.enabled]:
+            return tr("No regions yet, so the camera gets the original video. Click “Hide face”, or create a "
+                      "region on the Region Editor page.")
+        return ""
 
     def _black_input(self) -> bool:
         """Checked at most twice a second while the input is frozen."""
@@ -90,6 +128,7 @@ class PreviewPage:
                 v.set_image(None); v.set_boxes([])
             self.processed.set_overlay("Not running", "idle")
             self.info.setText(tr(cs.state.replace("_", " ")))
+            self.note.hide()
             self.stats.setText(tr(""))
             return
         if not self.widget.isVisible():
@@ -111,6 +150,8 @@ class PreviewPage:
         po = {"paused": ("PAUSED: clients see a frozen frame", "warn"),
               "passthrough": (tr("PASSTHROUGH ({reason})", reason=tr(p.passthrough_reason)), "error")}.get(p.state, ("", "ok"))
         self.processed.set_overlay(*po)
+        note = self.output_note()
+        self.note.setText(note); self.note.setVisible(bool(note))
         self.info.setText(f"{cs.source_name} · {cs.width}×{cs.height} · " +
                           tr("in {a} fps · out {b} fps", a=f"{cs.measured_fps:.0f}", b=f"{p.output_fps:.0f}"))
         cam = {"connected": tr("camera {name} connected (sent {s}, dropped {d})", name=p.camera_device,

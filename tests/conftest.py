@@ -6,6 +6,7 @@ import pytest
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 os.environ["VCS_DISABLE_GLOBAL_HOTKEYS"] = "1"   # tests must never grab system-wide shortcuts
+os.environ["VCS_NO_AUTOSTART"] = "1"             # tests start capture explicitly
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from vcstudio.core.paths import AppPaths  # noqa: E402

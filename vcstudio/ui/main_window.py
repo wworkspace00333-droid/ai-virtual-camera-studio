@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import logging
 
 from PySide6.QtCore import QByteArray, QTimer
@@ -85,8 +87,17 @@ class MainWindow(QMainWindow):
         self.timer.start(ctx.settings.get("performance.monitor_interval_ms"))
         self._slow = 0
         self._tick()
-        if ctx.settings.get("input.autostart"):
-            QTimer.singleShot(500, ctx.start_capture)
+        if ctx.settings.get("input.autostart") and not os.environ.get("VCS_NO_AUTOSTART"):
+            QTimer.singleShot(500, self._autostart)
+
+    def _autostart(self) -> None:
+        """Start capture on launch; failures (no OBS, feedback-loop risk) are shown on the pages, not raised."""
+        if self.ctx.capture.stats().state not in ("stopped", "error"):
+            return
+        try:
+            self.ctx.start_capture()
+        except Exception as e:  # noqa: BLE001
+            logging.getLogger(__name__).warning("Autostart skipped: %s", e)
 
     def apply_hotkeys(self) -> dict[str, str]:
         """Global (system-wide) hotkeys when enabled and possible; in-app shortcuts for the rest."""
