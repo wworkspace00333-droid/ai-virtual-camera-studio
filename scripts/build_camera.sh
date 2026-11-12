@@ -7,6 +7,7 @@
 #   - VCS_TEAM_ID=<your 10-character Team ID>
 # Usage:  VCS_TEAM_ID=ABCDE12345 scripts/build_camera.sh [--no-install]
 set -e
+set -o pipefail          # a failed xcodebuild must stop the script (its output goes through tail)
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 TEAM="${VCS_TEAM_ID:-}"
 if ! xcodebuild -version >/dev/null 2>&1; then
@@ -33,6 +34,12 @@ codesign -d --entitlements :- "$EXT" 2>/dev/null | grep -q application-groups &&
 [[ "$1" == "--no-install" ]] && { echo "Built: $APP"; exit 0; }
 DEST="/Applications/AI Virtual Camera Studio.app"
 echo "--- installing to $DEST"
+if [[ -x "$DEST/Contents/MacOS/vcstudio" ]]; then
+  # a packaged app from the DMG is installed there: keep it instead of deleting it
+  BACKUP="/Applications/AI Virtual Camera Studio (DMG $(date +%Y%m%d-%H%M%S)).app"
+  echo "Existing packaged app moved to: $BACKUP"
+  mv "$DEST" "$BACKUP"
+fi
 rm -rf "$DEST"
 ditto "$APP" "$DEST"
 echo "--- activating camera extension"
