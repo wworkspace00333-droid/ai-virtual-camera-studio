@@ -95,6 +95,8 @@ def asset_affine(asset_w: int, asset_h: int, region, spec: ReplacementSpec) -> n
         sx = sy = 1.0
     sx *= spec.scale
     sy *= spec.scale
+    if spec.flip_h:
+        sx = -sx
     a = math.radians(rrot + spec.rotation)
     c, s = math.cos(a), math.sin(a)
     rr = math.radians(rrot)

@@ -21,6 +21,7 @@ class ReplacementSpec:
     offset_x: float = 0.0              # fraction of region width
     offset_y: float = 0.0              # fraction of region height
     rotation: float = 0.0              # degrees, added to the region's rotation
+    flip_h: bool = False               # mirror the asset (for apps that show the camera mirrored)
     opacity: float = 1.0
     crop: list[float] = field(default_factory=lambda: [0.0, 0.0, 1.0, 1.0])   # normalised asset crop
     feather_px: float = 0.0

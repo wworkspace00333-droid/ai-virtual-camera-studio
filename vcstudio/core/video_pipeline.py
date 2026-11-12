@@ -22,6 +22,8 @@ import threading
 import time
 from dataclasses import asdict, dataclass
 
+import numpy as np
+
 from vcstudio.core.frame import Frame, host_time_s
 from vcstudio.core.frame_queue import LatestSlot
 from vcstudio.core.performance import FpsCounter
@@ -134,6 +136,8 @@ class VideoPipeline:
         self.replacement_enabled = True
         self.heartbeat = 0.0              # monotonic time of the last loop iteration (watchdog)
         self._last_out: Frame | None = None
+        self.override = None              # callable(w, h) -> BGRA array sent instead of the video (calibration)
+        self._override_cache: tuple | None = None
         self._consecutive_errors = 0
         self._generation = 0
 
@@ -236,7 +240,17 @@ class VideoPipeline:
             t0 = time.perf_counter()
             regions_n = 0
             try:
-                if self.paused and self._last_out is not None:
+                ov = self.override
+                if ov is not None:
+                    key = (id(ov), frame.width, frame.height)
+                    if self._override_cache is None or self._override_cache[0] != key:
+                        self._override_cache = (key, np.ascontiguousarray(ov(frame.width, frame.height)))
+                    arr = self._override_cache[1]
+                    out = Frame(frame.seq, frame.pts, frame.arrival, frame.width, frame.height,
+                                pixel_buffer=pixel_buffer_for(Frame(frame.seq, frame.pts, frame.arrival, frame.width,
+                                                                    frame.height, array=arr, source="override")),
+                                source="override")
+                elif self.paused and self._last_out is not None:
                     out = self._last_out
                 else:
                     out = None

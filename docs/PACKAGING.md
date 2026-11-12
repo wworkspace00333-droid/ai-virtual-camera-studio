@@ -41,6 +41,15 @@ Measured on 2026-11-10 (MacBook Pro M5, 16 GB):
 | GUI `--autostart-capture --snapshot` | All pages render; the pipeline runs |
 | `codesign --verify --deep --strict` on the app and on the app inside the DMG | Pass |
 
+Rebuilt and re-measured on 2026-11-12 (MacBook Pro M2 Pro, 16 GB, macOS 27.2.1):
+
+| Check | Result |
+|---|---|
+| `--self-check` from the mounted DMG, clean environment (`env -i`, no venv) | 11/12 pass (ffmpeg, optional, not installed). yolo11n 5.6 ms, yolo11s 6.2 ms, yolo11m 13.4 ms, yolo11n-seg 8.6 ms, yolo11m-seg 18.8 ms per frame; Metal on Apple M2 Pro; OBS sharing live; plugin installed |
+| `VCS_LIVE=1 pytest tests/test_packaging.py` | 5/5 pass |
+| `codesign --verify --deep --strict` on the app inside the DMG | Pass |
+| Sizes | app 371 MB, DMG 205 MB |
+
 ### Gatekeeper with an ad-hoc signature
 
 An ad-hoc signed app copied from a DMG downloaded from the Internet is quarantined. On first launch, open

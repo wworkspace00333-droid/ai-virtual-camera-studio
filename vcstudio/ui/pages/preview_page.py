@@ -26,6 +26,8 @@ class PreviewPage:
         self.face_btn = QPushButton(tr("Hide face")); self.face_btn.setCheckable(True)
         self.face_btn.setToolTip(tr("Pixelates every detected face in the camera output (adds a region on the "
                                     "Region Editor page; click again to remove it)."))
+        self.card_btn = QPushButton(tr("Card for a game…"))
+        self.card_btn.setToolTip(tr("Put a photo into the frame a browser game or an emulator draws over the camera."))
         self.boxes = QCheckBox(tr("Show detections")); self.boxes.setChecked(True)
         src_btn = QPushButton(tr("Input settings…"))
         # two rows: one row of all controls is wider than a 1100 px window in Russian
@@ -35,7 +37,7 @@ class PreviewPage:
         bar.addWidget(src_btn)
         lay.addLayout(bar)
         bar2 = QHBoxLayout()
-        for b in (self.repl_btn, self.face_btn, self.boxes):
+        for b in (self.repl_btn, self.face_btn, self.card_btn, self.boxes):
             bar2.addWidget(b)
         bar2.addStretch()
         lay.addLayout(bar2)
@@ -64,6 +66,8 @@ class PreviewPage:
                                       if on != ctx.pipeline.replacement_enabled else None)
         self.boxes.toggled.connect(lambda on: setattr(self.feeder, "show_detections", on))
         self.face_btn.toggled.connect(self._toggle_face)
+        self.card_btn.clicked.connect(self.open_game_card)
+        self._card_dialog = None
         src_btn.clicked.connect(goto_input)
         self._last_ver = -1
         self.timer = QTimer(self.widget)
@@ -89,6 +93,12 @@ class PreviewPage:
         self.ctx.update_active_profile(lambda b: set_quick_face(b, on))
         if on and not self.ctx.pipeline.replacement_enabled:
             self.ctx.pipeline.set_replacement_enabled(True)
+
+    def open_game_card(self) -> None:
+        from vcstudio.ui.game_card_dialog import GameCardDialog
+        if self._card_dialog is None:
+            self._card_dialog = GameCardDialog(self.ctx, self.widget.window())
+        self._card_dialog.show(); self._card_dialog.raise_(); self._card_dialog.activateWindow()
 
     def output_note(self) -> str:
         """Why the camera output looks unchanged, if it does."""

@@ -2,6 +2,23 @@
 
 All runs were on the target MacBook Pro M5 (16 GB), macOS 27.2, on 2026-11-09.
 
+## 30-minute soak on a second Mac (MacBook Pro M2 Pro, 16 GB, macOS 27.2.1, 2026-11-12)
+
+Same command and workload as below with `--minutes 30` (6 full fault cycles), output to OBS Virtual Camera.
+
+| Measure | Result |
+|---|---|
+| Output fps (median / p05) | 60.0 / 60.0; independent client 60.5 / 60.2 |
+| Latency median / worst p95 | 3.5 ms / 7.0 ms |
+| Footprint start → end (max) | 462 → 452 MB (503 MB); last two quarters 430 → 427 MB |
+| Threads / file descriptors | 36–47 / 21 flat |
+| Render errors, AI errors, watchdog restarts | 0, 0, 0 |
+| Camera frames sent / dropped | 105,157 / 0 |
+| Verdict | all faults recovered, no memory growth, sustained 60 fps, threads and fds stable |
+
+The stress suite (`VCS_STRESS=1`, 7 tests) and all live tests (`VCS_LIVE=1`) also pass on this Mac; only the
+AI Virtual Camera test is skipped (extension not installed, Stage 9).
+
 ## 2-hour soak with fault injection
 
 - **Command:** `open -n "build/AI Virtual Camera Studio Dev.app" --args --soak build/soak_2h --minutes 120 --device "OBS Virtual Camera" --sink "OBS Camera Extension Stream Sink"`, then `scripts/analyse_soak.py build/soak_2h`.

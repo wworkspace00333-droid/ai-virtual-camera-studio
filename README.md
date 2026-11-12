@@ -16,6 +16,24 @@ Translations live in `vcstudio/i18n_ru.py` (English text is the key, so a missin
 The processed video can go out through **OBS Virtual Camera** instead of the app's own camera: Virtual Camera page >
 *Send processed video to*. Verified end to end on this setup; see [docs/OBS_INTEGRATION.md](docs/OBS_INTEGRATION.md).
 
+## Hide a face in one click
+
+Preview > **Hide face** pixelates every detected face in the camera output (Apple Vision faces, on by default; the
+region appears in the Region Editor and can be switched to blur or tuned there). Capture starts by itself when the app
+opens (Settings > *Start capture when the app opens*). When the output is unchanged because there are no regions, the
+Preview page says so. Verified on live OBS video: the face stayed covered in 351 of 351 frames while the head turned.
+
+## Card for a game
+
+Preview > **Card for a game…** puts a photo into the frame that a browser game or an emulator draws over the camera.
+Add card photos, open the game with OBS Virtual Camera selected, and click **Find the frame automatically**: the app
+hides for about 4 seconds, shows calibration markers and then a grey picture in the camera, and takes two
+screenshots. From them it works out how the game shows the camera (scaled, cropped, mirrored) and where its frame
+is. If the found frame is wrong, draw it on the screenshot. Click a card to switch; *Mirror the card* fixes a card that
+reads backwards in a mirrored view. Needs Screen Recording permission (macOS asks the first time). Verified live with
+a stand-in game (`scripts/fake_game.py`: mirrored, square-cropped, darkened around a captioned frame): 26 markers,
+0.35 px error, card placed in the frame.
+
 ## Supported Macs
 
 Any Apple Silicon Mac (M1 through M5, any memory size) on macOS 13 or later. Everything is built for `arm64-apple-macos13.0`; Intel Macs are not supported.

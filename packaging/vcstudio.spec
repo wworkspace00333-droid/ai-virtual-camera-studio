@@ -29,6 +29,8 @@ hidden = [
     "VideoToolbox", "libdispatch", "scipy.optimize", "psutil", "cv2",
     "PySide6.QtCore", "PySide6.QtGui", "PySide6.QtWidgets",
 ]
+from PyInstaller.utils.hooks import collect_submodules  # noqa: E402
+hidden += collect_submodules("vcstudio")   # pages and dialogs are imported lazily inside functions
 
 a = Analysis(
     [str(ROOT / "packaging" / "entry.py")],

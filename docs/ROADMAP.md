@@ -27,6 +27,20 @@ Status values: ✅ done and tested · 🟡 in progress · ⬜ not started · ⛔
 - **Output through OBS Virtual Camera** (no Apple Developer account): selectable on the Virtual Camera page; verified live OBS → vcstudio-obs plugin → AI → Metal → OBS camera → independent client (30.1 fps at 1080p30, replacement in 100% of frames).
 - **Detection quality, measured:** `scripts/eval_accuracy.py` (COCO128) and an AI Engine "Check accuracy" button (16 bundled labelled images); "auto" picks the largest model that fits each mode's budget; default confidence 0.45; new objects shown after 3 consecutive detections. Numbers in [BENCHMARK.md](BENCHMARK.md).
 - **Russian interface:** `vcstudio/i18n.py` + `vcstudio/i18n_ru.py`, Settings > Language (auto / English / Russian).
+- **Verified on live OBS content (user's own video, 1080p30, head turning to both profiles):** colour from the
+  plugin is correct; YOLO finds the person at 0.94 in every frame; Apple Vision finds the face in 181/181 frames; the
+  tracked face box matches a fresh detection on the output frame at median IoU 0.95; the one-click "Hide face" region
+  covers the whole face in 351/351 frames. This closes the "not yet verified on live OBS content" notes of Stages 2b,
+  3 and 4.
+- **Fixed from that session:** effect regions (blur/pixelate/colour) did not render unless an image or video asset
+  existed; capture did not autostart; the auto model choice was re-measured on every launch (a ~1 s model reload
+  about 30 s after start), now remembered in `auto_model.json`.
+- **Card for a game** (`vcstudio/game/cardframe.py`, `vcstudio/ui/game_card_dialog.py`): ArUco calibration
+  camera → screen (dense 12×6 grid, coarse 6×3 fallback, mirrored views handled), frame detection on a grey
+  picture, manual frame drawing, card switching, mirror option. 10 tests, including the whole dialog flow with a
+  simulated screen; verified live.
+- **Second-Mac verification:** DMG rebuilt and self-checked from the mounted image (11/12, ffmpeg optional), stress
+  suite 7/7, live tests pass, 30-minute soak passes every criterion ([STABILITY.md](STABILITY.md)).
 - **Build scripts** fall back to `xcrun`'s SDK when the 26.x Command Line Tools SDK is missing.
 - **Benchmark repeated on the M2 Pro:** 60 fps output in all four modes and both scenarios; see [BENCHMARK.md](BENCHMARK.md). The soak test was not repeated here.
 
