@@ -143,7 +143,7 @@ class AIEnginePage:
         self.enabled.setChecked(ai.get("enabled", True))
         self.face.setChecked(ai.get("face_detection") == "vision")
         self.model.clear()
-        self.model.addItem(tr("Auto (smallest; largest in Maximum Quality mode)"), "auto")
+        self.model.addItem(tr("Auto (largest that keeps up on this Mac; smallest in Low Resource mode)"), "auto")
         avail = self.ctx.models.available()
         for name, info in avail.items():
             if info.task == "detect":
@@ -171,7 +171,9 @@ class AIEnginePage:
         s = self.ctx.ai.stats()
         level = {"running": "ok", "degraded": "warn", "error": "error", "loading": "warn"}.get(s.state, "idle")
         self.cards["State"].set(s.state.title(), "starts with capture" if s.state == "stopped" else "", level)
-        self.cards["Model"].set(s.model or "—", tr(s.quality_note or COMPUTE_UNITS.get(s.compute_units, "")) +
+        note = (tr(s.quality_note_tpl, **s.quality_note_args) if s.quality_note_tpl
+                else tr(COMPUTE_UNITS.get(s.compute_units, "")))
+        self.cards["Model"].set(s.model or "—", note +
                                 (" · " + tr("loaded in {s} s", s=f"{s.model_load_s:.2f}") if s.model_load_s else ""))
         tgt = tr("max sustainable") if s.target_fps is None else tr("target {fps} fps", fps=f"{s.target_fps:g}")
         live = s.state == "running"

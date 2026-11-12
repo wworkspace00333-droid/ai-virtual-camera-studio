@@ -182,3 +182,18 @@ def test_release_resources_frees_gpu_slots(tmp_path):
     comp.release_resources()
     assert not comp.metal._slots and not comp.metal._pools
     comp.close()
+
+
+def test_auto_model_choice_per_mode(tmp_path):
+    """Low Resource takes the smallest model; other modes the largest not measured too slow for their budget."""
+    from vcstudio.ai.engine import AIEngine, QUALITY_BUDGET_MS
+    from vcstudio.core.capture_supervisor import CaptureSupervisor
+    eng = AIEngine(CaptureSupervisor(), ModelManager(Path(__import__("tempfile").mkdtemp())))
+    ranked = [m.name for m in eng.models.ranked("detect")]
+    if len(ranked) < 2:
+        pytest.skip("needs at least two detector models")
+    assert eng._max_quality_choice("detect", QUALITY_BUDGET_MS["balanced"]).name == ranked[0]
+    eng.mq_rejected["detect"][ranked[0]] = 22.0      # too slow for Performance (20 ms), fine for Balanced (25 ms)
+    assert eng._max_quality_choice("detect", QUALITY_BUDGET_MS["performance"]).name == ranked[1]
+    assert eng._max_quality_choice("detect", QUALITY_BUDGET_MS["balanced"]).name == ranked[0]
+    assert eng.models.resolve("auto", "detect").name == ranked[-1]     # Low Resource path: smallest

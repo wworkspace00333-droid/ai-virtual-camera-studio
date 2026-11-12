@@ -2,7 +2,10 @@
 
 - Pulls only the newest captured frame (never queues frames); capture never waits for AI.
 - Rate is set by the performance mode (or the profile's fixed rate); Maximum Quality runs as
-  fast as the hardware sustains and prefers the larger model when detector_model == "auto".
+  fast as the hardware sustains.
+- With detector_model == "auto", every mode except Low Resource uses the largest model whose
+  measured p95 inference time fits that mode's budget on this Mac, and steps down when it
+  doesn't (QUALITY_BUDGET_MS). Low Resource always uses the smallest model.
 - Results are published into a LatestSlot; consumers (tracker, overlays) read the newest.
 - Errors are contained: after repeated failures the model is unloaded and reloaded with backoff;
   capture/passthrough is unaffected.
@@ -14,7 +17,7 @@ import copy
 import logging
 import threading
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from typing import Callable
 
 from vcstudio.ai.coreml_engine import CoreMLDetector, VisionFaceDetector
@@ -48,6 +51,8 @@ class AIStats:
     consecutive_errors: int = 0
     model_load_s: float = 0.0
     quality_note: str = ""
+    quality_note_tpl: str = ""      # translatable template + args for the UI
+    quality_note_args: dict = field(default_factory=dict)
     frame_age_ms: float = 0.0       # capture-to-result latency of the last result
     tracking: bool = False
     tracks_active: int = 0
@@ -61,7 +66,10 @@ class AIStats:
         return asdict(self)
 
 
-MQ_BUDGET_MS = 25.0      # Maximum Quality: p95 inference budget (keeps >= 30 fps AI with headroom)
+# p95 inference budget per mode for "auto" model choice. A model's measured p95 must fit, so slower
+# Macs settle on smaller models by themselves. Low Resource is absent: it always uses the smallest.
+QUALITY_BUDGET_MS = {"performance": 20.0, "balanced": 25.0, "max_quality": 25.0}
+MQ_BUDGET_MS = QUALITY_BUDGET_MS["max_quality"]
 MQ_SAMPLES = 40          # inferences measured before judging a model
 
 
@@ -88,9 +96,10 @@ class AIEngine:
         self._detector: CoreMLDetector | SegmentationDetector | None = None
         self.last_inference = 0.0       # monotonic time of the last successful inference (watchdog)
         self.restarts = 0
-        # Maximum Quality: per task, models judged too slow on this machine (measured p95 ms)
+        # per task, models measured too slow for some mode's budget on this machine (p95 ms)
         self.mq_rejected: dict[str, dict[str, float]] = {"detect": {}, "segment": {}}
         self.mq_note = ""
+        self.mq_note_tpl, self.mq_note_args = "", {}
         self._face: VisionFaceDetector | None = None
 
     # ------------------------------------------------------------- config
@@ -186,6 +195,7 @@ class AIEngine:
             s.face_ms_avg = sum(self._face_lat) / len(self._face_lat)
         s.target_fps = self.target_fps()
         s.quality_note = self.mq_note
+        s.quality_note_tpl, s.quality_note_args = self.mq_note_tpl, dict(self.mq_note_args)
         ts = self.tracker.stats
         s.tracking = self._tcfg.enabled
         s.tracks_active, s.tracks_lost = ts.active, ts.lost
@@ -205,9 +215,14 @@ class AIEngine:
             getattr(log, lvl.lower())("AI %s", msg)
             self._sink(lvl, "ai", msg)
 
+    def _note(self, tpl: str, **kw) -> None:
+        self.mq_note_tpl, self.mq_note_args = tpl, kw
+        self.mq_note = tpl.format(**kw)
+
     def _judge_max_quality(self, cfg: DetectionConfig, mode: str) -> None:
-        """Step down to a smaller model if the current one cannot sustain the budget here."""
-        if mode != "max_quality" or self._detector is None:
+        """Step down to a smaller model if the current one cannot sustain this mode's budget here."""
+        budget = QUALITY_BUDGET_MS.get(mode)
+        if budget is None or self._detector is None:
             return
         name = cfg.segmentation_model if cfg.need_masks else cfg.detector_model
         if name not in ("auto", "", None) or len(self._lat) < MQ_SAMPLES:
@@ -217,24 +232,27 @@ class AIEngine:
         task = "segment" if cfg.need_masks else "detect"
         cur = self._detector.name
         ranked = [m.name for m in self.models.ranked(task)]
-        if p95 > MQ_BUDGET_MS and ranked and cur != ranked[-1]:
+        if p95 > budget and ranked and cur != ranked[-1]:
             self.mq_rejected.setdefault(task, {})[cur] = round(p95, 1)
-            self.mq_note = f"{cur} p95 {p95:.1f} ms > {MQ_BUDGET_MS:g} ms budget: stepping down"
-            self._sink("WARNING", "ai", f"Maximum Quality: {self.mq_note}")
-            log.warning("Maximum Quality: %s", self.mq_note)
+            self._note("{model} p95 {p95} ms > {budget} ms budget: stepping down", model=cur, p95=f"{p95:.1f}",
+                       budget=f"{budget:g}")
+            self._sink("WARNING", "ai", f"Auto model: {self.mq_note}")
+            log.warning("Auto model (%s): %s", mode, self.mq_note)
             self._lat.clear()                     # next _ensure_models picks the next smaller model
             self._detector = None
-        elif p95 <= MQ_BUDGET_MS and not self.mq_note.startswith(cur):
-            self.mq_note = f"{cur} sustains p95 {p95:.1f} ms (budget {MQ_BUDGET_MS:g} ms)"
+        elif p95 <= budget and not self.mq_note.startswith(f"{cur} sustains"):
+            self._note("{model} sustains p95 {p95} ms (budget {budget} ms)", model=cur, p95=f"{p95:.1f}",
+                       budget=f"{budget:g}")
 
-    def _max_quality_choice(self, task: str):
-        """Largest model of `task` not yet measured as too slow on this hardware."""
+    def _max_quality_choice(self, task: str, budget: float = MQ_BUDGET_MS):
+        """Largest model of `task` not measured as too slow for `budget` on this hardware."""
         ranked = self.models.ranked(task)
         if not ranked:
             return None
         rejected = self.mq_rejected.setdefault(task, {})
         for m in ranked:
-            if m.name not in rejected:
+            p95 = rejected.get(m.name)
+            if p95 is None or p95 <= budget:
                 return m
         return ranked[-1]                        # everything too slow: use the smallest anyway
 
@@ -243,8 +261,8 @@ class AIEngine:
         # (it also returns boxes and classes), so only one model is resident.
         task, name = ("segment", cfg.segmentation_model) if cfg.need_masks else ("detect", cfg.detector_model)
         want = None
-        if mode == "max_quality" and name in ("auto", "", None):
-            want = self._max_quality_choice(task)
+        if mode in QUALITY_BUDGET_MS and name in ("auto", "", None):
+            want = self._max_quality_choice(task, QUALITY_BUDGET_MS[mode])
         if want is None:
             want = self.models.resolve(name, task, prefer_large=(mode == "max_quality"))
         cur = self._detector

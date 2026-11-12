@@ -264,7 +264,7 @@ def test_segmentation_masks_follow_tracks_and_drive_object_replacement(pipeline,
     eng.configure(DetectionConfig(confidence=0.35, need_masks=True, frequency_mode="fixed", fixed_fps=20), "balanced")
     eng.start()
     assert wait_for(lambda: eng.stats().inferences > 10)
-    assert eng.stats().model == "yolo11n-seg"
+    assert eng.stats().model.endswith("-seg")       # auto picks the largest seg model that keeps up
     objs = eng.tracked_at(host_time_s())
     people = [o for o in objs if o.label == "person"]
     assert len(people) >= 3 and all(o.mask is not None for o in people)
